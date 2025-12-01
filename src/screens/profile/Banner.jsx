@@ -1,6 +1,12 @@
 import React from "react";
+import { NavLink } from "react-router-dom";
 
-const tabs = ["All", "Popular tracks", "Tracks", "Albums", "Playlists", "Reposts"];
+const navItems = [
+  { label: "All", path: "/profile" },
+  { label: "Popular Tracks", path: "/profile/popular" },
+  { label: "Tracks", path: "/profile/tracks" },
+  { label: "Playlist", path: "/profile/playlists" }
+];
 
 const Banner = () => (
   <>
@@ -75,16 +81,23 @@ const Banner = () => (
       justifyContent: "space-between"
     }}>
       <div style={{ display: "flex", gap: 28, fontSize: 14, color: "#cfcfcf" }}>
-        {tabs.map(tab => (
-          <button key={tab} style={{
-            background: "none",
-            border: "none",
-            color: tab === "All" ? "#fff" : "#cfcfcf",
-            fontWeight: tab === "All" ? 600 : 500,
-            cursor: "pointer",
-            paddingBottom: 4,
-            borderBottom: tab === "All" ? "2px solid #f50" : "2px solid transparent"
-          }}>{tab}</button>
+        {navItems.map(item => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            style={({ isActive }) => ({
+              background: "none",
+              border: "none",
+              color: isActive ? "#fff" : "#cfcfcf",
+              fontWeight: isActive ? 600 : 500,
+              cursor: "pointer",
+              paddingBottom: 4,
+              borderBottom: isActive ? "2px solid #f50" : "2px solid transparent",
+              textDecoration: "none"
+            })}
+          >
+            {item.label}
+          </NavLink>
         ))}
       </div>
       <div style={{ display: "flex", gap: 12 }}>
