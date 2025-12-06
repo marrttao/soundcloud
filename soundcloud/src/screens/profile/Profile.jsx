@@ -1,21 +1,40 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import Header from "../../components/Header.jsx";
 import Footer from "../../components/Footer.jsx";
 import SideBar from "./SideBar.jsx";
 import Banner from "./Banner.jsx";
 import ProfileSetupModal from "../main/ProfileSetupModal";
-import { fetchProfile } from "../../api/profile";
+import { fetchProfile, fetchProfileByUsername } from "../../api/profile";
 
 const Profile = () => {
+  const { username } = useParams();
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showEditModal, setShowEditModal] = useState(false);
+  const [currentUserProfile, setCurrentUserProfile] = useState(null);
+
+  // Получить профиль текущего пользователя для сравнения
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      try {
+        const data = await fetchProfile();
+        setCurrentUserProfile(data?.profile);
+      } catch (err) {
+        console.error("Failed to fetch current user:", err);
+        setError(err?.message ?? "Unable to load profile.");
+      }
+    };
+    getCurrentUser();
+  }, []);
 
   const refreshProfile = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchProfile();
+      const data = username 
+        ? await fetchProfileByUsername(username)
+        : await fetchProfile();
       setProfileData(data);
       setError("");
     } catch (err) {
@@ -23,11 +42,14 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [username]);
 
   useEffect(() => {
     refreshProfile();
   }, [refreshProfile]);
+
+  // Проверка является ли это своим профилем
+  const isOwnProfile = !username || (currentUserProfile && profileData?.profile?.username === currentUserProfile?.username);
 
   return (
     <div style={{
@@ -36,7 +58,7 @@ const Profile = () => {
       display: "flex",
       flexDirection: "column"
     }}>
-      <Header />
+      <Header avatarUrl={currentUserProfile?.avatar_url} />
       <div style={{
         marginTop: 56,
         flex: 1,
@@ -54,7 +76,12 @@ const Profile = () => {
           <div style={{ color: "#ff8a8a", fontSize: 14 }}>{error}</div>
         )}
         <div style={{ width: "100%", maxWidth: 1240 }}>
-          <Banner profile={profileData?.profile} loading={loading} onEdit={() => setShowEditModal(true)} />
+          <Banner 
+            profile={profileData?.profile} 
+            loading={loading} 
+            onEdit={() => setShowEditModal(true)} 
+            isOwnProfile={isOwnProfile}
+          />
         </div>
         <div style={{ width: "100%", maxWidth: 1240, display: "flex", justifyContent: "flex-end" }}>
           <div style={{ width: 360 }}>
@@ -72,10 +99,10 @@ const Profile = () => {
         <ProfileSetupModal
           initialValues={{
             username: profileData?.profile?.username ?? "",
-            fullName: profileData?.profile?.fullName ?? "",
+            fullName: profileData?.profile?.full_name ?? "",
             bio: profileData?.profile?.bio ?? "",
-            avatarUrl: profileData?.profile?.avatarUrl ?? "",
-            bannerUrl: profileData?.profile?.bannerUrl ?? ""
+            avatarUrl: profileData?.profile?.avatar_url ?? "",
+            bannerUrl: profileData?.profile?.banner_url ?? ""
           }}
           title="Edit your profile"
           submitLabel="Save changes"

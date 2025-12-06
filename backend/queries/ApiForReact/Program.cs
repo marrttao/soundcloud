@@ -87,10 +87,16 @@ namespace queries.ApiForReact
                 return await ProxyHttpResponse(response, httpContext);
             });
 
-            app.MapGet("/profile/me", async (HttpRequest httpRequest, ProfileService profileService) =>
+            app.MapGet("/profile/me", async (HttpRequest httpRequest, ProfileService profileService, SupabaseService supabase) =>
             {
                 var token = ExtractBearerToken(httpRequest);
                 if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
                 {
                     return Results.Unauthorized();
                 }
@@ -117,6 +123,43 @@ namespace queries.ApiForReact
                     var status = ex.StatusCode ?? HttpStatusCode.BadRequest;
                     return Results.StatusCode((int)status);
                 }
+            });
+
+            app.MapGet("/profile/{username}", async (string username, HttpRequest httpRequest, ProfileService profileService, SupabaseService supabase) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                var profile = await profileService.BuildProfileByUsernameAsync(username, token);
+                return profile is { } ? Results.Ok(profile) : Results.NotFound();
+            });
+
+            app.MapGet("/search", async (HttpRequest httpRequest, SupabaseService supabase, string? q) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                if (string.IsNullOrWhiteSpace(q))
+                {
+                    return Results.Ok(new { profiles = new List<object>(), tracks = new List<object>() });
+                }
+
+                var profiles = await supabase.SearchProfilesAsync(q, token);
+                var tracks = await supabase.SearchTracksAsync(q, token);
+                
+                return Results.Ok(new { profiles, tracks });
             });
 
             await app.RunAsync();

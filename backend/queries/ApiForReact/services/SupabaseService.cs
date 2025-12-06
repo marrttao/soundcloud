@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -81,7 +82,15 @@ public class SupabaseService
         => string.Join(',', ids.Select(id => id.ToString()));
 
     public async Task<SupabaseUser?> GetUserAsync(string accessToken)
-        => await ReadJsonAsync<SupabaseUser>(await SendAuthRequestAsync(HttpMethod.Get, "/auth/v1/user", null, accessToken));
+    {
+        var response = await SendAuthRequestAsync(HttpMethod.Get, "/auth/v1/user", null, accessToken);
+        if (response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden)
+        {
+            return null;
+        }
+
+        return await ReadJsonAsync<SupabaseUser>(response);
+    }
 
     public async Task<List<ProfileDto>> GetProfilesByIdsAsync(IEnumerable<Guid> ids, string accessToken)
     {
@@ -100,10 +109,27 @@ public class SupabaseService
         return data.FirstOrDefault();
     }
 
+    public async Task<ProfileDto?> GetProfileByUsernameAsync(string username, string accessToken)
+    {
+        var path = $"/rest/v1/profiles?select=id,username,full_name,avatar_url,bio,banner_url&username=ilike.{username}";
+        var response = await SendAuthRequestAsync(HttpMethod.Get, path, null, accessToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+        var data = await ReadJsonAsync<List<ProfileDto>>(response) ?? new List<ProfileDto>();
+        return data.FirstOrDefault();
+    }
+
     public async Task<List<TrackRecord>> GetTracksAsync(Guid userId, string accessToken)
     {
         var path = $"/rest/v1/tracks?select=id,title,plays_count,likes_count,user_id&user_id=eq.{userId}&order=created_at.desc&limit=6";
         var response = await SendAuthRequestAsync(HttpMethod.Get, path, null, accessToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return new List<TrackRecord>();
+        }
+
         return await ReadJsonAsync<List<TrackRecord>>(response) ?? new List<TrackRecord>();
     }
 
@@ -111,6 +137,11 @@ public class SupabaseService
     {
         var path = $"/rest/v1/track_likes?select=track:tracks(id,title,plays_count,likes_count,user_id)&user_id=eq.{userId}&order=created_at.desc&limit=6";
         var response = await SendAuthRequestAsync(HttpMethod.Get, path, null, accessToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return new List<TrackLikeRecord>();
+        }
+
         return await ReadJsonAsync<List<TrackLikeRecord>>(response) ?? new List<TrackLikeRecord>();
     }
 
@@ -118,6 +149,11 @@ public class SupabaseService
     {
         var path = $"/rest/v1/follows?select=following_id&follower_id=eq.{userId}&order=created_at.desc&limit=6";
         var response = await SendAuthRequestAsync(HttpMethod.Get, path, null, accessToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return new List<FollowingRelation>();
+        }
+
         return await ReadJsonAsync<List<FollowingRelation>>(response) ?? new List<FollowingRelation>();
     }
 
@@ -131,6 +167,11 @@ public class SupabaseService
 
         var path = $"/rest/v1/follows?select=following_id&following_id=in.({FormatInList(idList)})";
         var response = await SendAuthRequestAsync(HttpMethod.Get, path, null, accessToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return new List<FollowerCount>();
+        }
+
         return await ReadJsonAsync<List<FollowerCount>>(response) ?? new List<FollowerCount>();
     }
 
@@ -144,6 +185,11 @@ public class SupabaseService
 
         var path = $"/rest/v1/tracks?select=user_id&user_id=in.({FormatInList(idList)})";
         var response = await SendAuthRequestAsync(HttpMethod.Get, path, null, accessToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return new List<TrackCountRecord>();
+        }
+
         return await ReadJsonAsync<List<TrackCountRecord>>(response) ?? new List<TrackCountRecord>();
     }
 
@@ -162,7 +208,11 @@ public class SupabaseService
     private async Task<int> GetCountAsync(string path, string accessToken)
     {
         var response = await SendAuthRequestAsync(HttpMethod.Get, path, null, accessToken);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            return 0;
+        }
+
         var payload = await response.Content.ReadAsStringAsync();
         if (string.IsNullOrWhiteSpace(payload)) return 0;
 
@@ -212,6 +262,11 @@ public class SupabaseService
             payload["avatar_url"] = request.AvatarUrl;
         }
 
+        if (!string.IsNullOrWhiteSpace(request.BannerUrl))
+        {
+            payload["banner_url"] = request.BannerUrl;
+        }
+
         if (!string.IsNullOrWhiteSpace(request.Bio))
         {
             payload["bio"] = request.Bio;
@@ -223,7 +278,16 @@ public class SupabaseService
     private async Task<HttpResponseMessage> SendUpsertAsync(Dictionary<string, object?> payload, string accessToken)
     {
         var path = "/rest/v1/profiles?on_conflict=id";
-        var response = await SendAuthRequestAsyncRequired(HttpMethod.Post, path, payload, accessToken);
+        // Use Prefer: resolution=merge-duplicates so Supabase performs an upsert instead of throwing on duplicate keys
+        var request = new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = JsonContent.Create(payload)
+        };
+
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        request.Headers.Add("Prefer", "resolution=merge-duplicates");
+
+        var response = await _httpClient.SendAsync(request);
         if (!response.IsSuccessStatusCode)
         {
             var errorContent = await response.Content.ReadAsStringAsync();
@@ -245,8 +309,37 @@ public class SupabaseService
 
     private async Task<List<ProfileDto>> FetchProfilesAsync(string filter, string accessToken)
     {
-        var path = $"/rest/v1/profiles?select=id,username,full_name,avatar_url,bio&{filter}";
+        var path = $"/rest/v1/profiles?select=id,username,full_name,avatar_url,bio,banner_url&{filter}";
         var response = await SendAuthRequestAsync(HttpMethod.Get, path, null, accessToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return new List<ProfileDto>();
+        }
         return await ReadJsonAsync<List<ProfileDto>>(response) ?? new List<ProfileDto>();
     }
+
+    public async Task<List<ProfileDto>> SearchProfilesAsync(string query, string accessToken)
+    {
+        var path = $"/rest/v1/profiles?select=id,username,full_name,avatar_url&or=(username.ilike.*{query}*,full_name.ilike.*{query}*)&limit=10";
+        var response = await SendAuthRequestAsync(HttpMethod.Get, path, null, accessToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return new List<ProfileDto>();
+        }
+
+        return await ReadJsonAsync<List<ProfileDto>>(response) ?? new List<ProfileDto>();
+    }
+
+    public async Task<List<TrackSearchResult>> SearchTracksAsync(string query, string accessToken)
+    {
+        var path = $"/rest/v1/tracks?select=id,title,user_id&title=ilike.*{query}*&limit=10";
+        var response = await SendAuthRequestAsync(HttpMethod.Get, path, null, accessToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return new List<TrackSearchResult>();
+        }
+
+        return await ReadJsonAsync<List<TrackSearchResult>>(response) ?? new List<TrackSearchResult>();
+    }
 }
+

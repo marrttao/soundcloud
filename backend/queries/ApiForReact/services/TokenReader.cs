@@ -25,8 +25,11 @@ public class TokenReader
 
     private readonly BotSettings _settings;
 
-    public TokenReader(string filePath = @"C:\Users\marrt\Documents\code\react\sc\backend\queries\ApiForReact\services\tokens.json")
+    public TokenReader(string? filePath = null)
     {
+        // Use provided path, or default to tokens.json in the services directory
+        filePath ??= Path.Combine(AppContext.BaseDirectory, "services", "tokens.json");
+        
         if (!File.Exists(filePath))
             throw new FileNotFoundException($"File not found: {filePath}");
 

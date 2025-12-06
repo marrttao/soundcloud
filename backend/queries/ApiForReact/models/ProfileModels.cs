@@ -30,6 +30,9 @@ public record ProfileDto
     [JsonPropertyName("avatar_url")]
     public string? AvatarUrl { get; init; }
 
+    [JsonPropertyName("banner_url")]
+    public string? BannerUrl { get; init; }
+
     [JsonPropertyName("bio")]
     public string? Bio { get; init; }
 }
@@ -47,6 +50,9 @@ public record ProfileUpsertRequest
 
     [JsonPropertyName("bio")]
     public string? Bio { get; init; }
+
+    [JsonPropertyName("bannerUrl")]
+    public string? BannerUrl { get; init; }
 }
 
 public record ProfileStats(int Followers, int Following, int Tracks, int Likes);
@@ -67,14 +73,25 @@ public record SimpleProfile
     public string? AvatarUrl { get; init; }
     public int Followers { get; init; }
     public int Tracks { get; init; }
+    [JsonPropertyName("banner_url")]
+    public string? BannerUrl { get; init; }
 }
 
 public record ProfileViewModel
 {
+    [JsonPropertyName("profile")]
     public ProfileDto Profile { get; init; } = null!;
+    
+    [JsonPropertyName("stats")]
     public ProfileStats Stats { get; init; } = null!;
+    
+    [JsonPropertyName("tracks")]
     public List<TrackSummary> Tracks { get; init; } = new();
+    
+    [JsonPropertyName("likes")]
     public List<TrackSummary> Likes { get; init; } = new();
+    
+    [JsonPropertyName("following")]
     public List<SimpleProfile> Following { get; init; } = new();
 }
 
@@ -94,6 +111,7 @@ public record TrackRecord
 
     [JsonPropertyName("user_id")]
     public Guid UserId { get; init; }
+    
 }
 
 public record TrackLikeRecord
@@ -116,6 +134,18 @@ public record FollowerCount
 
 public record TrackCountRecord
 {
+    [JsonPropertyName("user_id")]
+    public Guid UserId { get; init; }
+}
+
+public record TrackSearchResult
+{
+    [JsonPropertyName("id")]
+    public long Id { get; init; }
+
+    [JsonPropertyName("title")]
+    public string Title { get; init; } = string.Empty;
+
     [JsonPropertyName("user_id")]
     public Guid UserId { get; init; }
 }

@@ -4,22 +4,50 @@ import logo from "../assets/img/logo.png";
 import arrow_down from "../assets/icons/arrow_down.png";
 import bell from "../assets/icons/bell.png";
 import message from "../assets/icons/message.png";
+import { search } from "../api/search";
 // NOTE: This component must be rendered inside a <Router> (e.g., <BrowserRouter>) for NavLink to work.
 
 const Header = ({ avatarUrl }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
   const menuRef = useRef(null);
+  const searchRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setMenuOpen(false);
       }
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setSearchOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const delaySearch = setTimeout(async () => {
+      if (searchQuery.trim().length > 0) {
+        try {
+          const results = await search(searchQuery);
+          setSearchResults(results);
+          setSearchOpen(true);
+        } catch (error) {
+          console.error("Search failed:", error);
+          setSearchResults({ profiles: [], tracks: [] });
+        }
+      } else {
+        setSearchResults(null);
+        setSearchOpen(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delaySearch);
+  }, [searchQuery]);
 
   const toggleMenu = () => setMenuOpen((open) => !open);
 
@@ -87,10 +115,12 @@ const Header = ({ avatarUrl }) => {
         </nav>
 
         {/* Search */}
-        <div className="header-search" style={{ display: "flex", alignItems: "center" }}>
+        <div className="header-search" style={{ display: "flex", alignItems: "center", position: "relative" }} ref={searchRef}>
           <input
             type="text"
             placeholder="Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             style={{
               width: "340px",
               padding: "8px 12px",
@@ -100,14 +130,91 @@ const Header = ({ avatarUrl }) => {
               color: "#fff"
             }}
           />
+          {searchOpen && searchResults && (searchResults.profiles.length > 0 || searchResults.tracks.length > 0) && (
+            <div style={{
+              position: "absolute",
+              top: "100%",
+              left: 0,
+              right: 0,
+              background: "#121212",
+              border: "1px solid #2d2d2d",
+              borderRadius: "8px",
+              marginTop: "4px",
+              maxHeight: "400px",
+              overflowY: "auto",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+              zIndex: 3000
+            }}>
+              {searchResults.profiles.length > 0 && (
+                <div style={{ padding: "8px 12px" }}>
+                  <div style={{ color: "#999", fontSize: "12px", fontWeight: "600", marginBottom: "8px" }}>PROFILES</div>
+                  {searchResults.profiles.map((profile) => (
+                    <NavLink
+                      key={profile.id}
+                      to={`/profile/${profile.username}`}
+                      onClick={() => {
+                        setSearchOpen(false);
+                        setSearchQuery("");
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        padding: "8px",
+                        borderRadius: "4px",
+                        textDecoration: "none",
+                        color: "#fff",
+                        transition: "background 0.2s"
+                      }}
+                      onMouseOver={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                      onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
+                    >
+                      {profile.avatar_url ? (
+                        <img
+                          src={profile.avatar_url}
+                          alt={profile.username}
+                          style={{ width: "40px", height: "40px", borderRadius: "50%", objectFit: "cover" }}
+                        />
+                      ) : (
+                        <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#444" }} />
+                      )}
+                      <div>
+                        <div style={{ fontSize: "14px", fontWeight: "500" }}>{profile.username}</div>
+                        {profile.full_name && <div style={{ fontSize: "12px", color: "#999" }}>{profile.full_name}</div>}
+                      </div>
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+              {searchResults.tracks.length > 0 && (
+                <div style={{ padding: "8px 12px", borderTop: searchResults.profiles.length > 0 ? "1px solid #2d2d2d" : "none" }}>
+                  <div style={{ color: "#999", fontSize: "12px", fontWeight: "600", marginBottom: "8px" }}>TRACKS</div>
+                  {searchResults.tracks.map((track) => (
+                    <div
+                      key={track.id}
+                      style={{
+                        padding: "8px",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        transition: "background 0.2s"
+                      }}
+                      onMouseOver={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                      onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
+                    >
+                      <div style={{ fontSize: "14px", color: "#fff" }}>{track.title}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right links */}
         <div className="header-actions" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           {[
             { label: "Try Artist Pro", href: "#", primary: true },
-            { label: "For Artists", href: "#" },
-            { label: "Upload", href: "#" }
+            { label: "For Artists", href: "#" }
           ].map(({ label, href, primary }) => (
             <a
               key={label}
@@ -125,6 +232,26 @@ const Header = ({ avatarUrl }) => {
               {label}
             </a>
           ))}
+
+          <NavLink
+            to="/upload"
+            style={({ isActive }) => ({
+              color: isActive ? "#ff5500" : "#ccc",
+              fontWeight: isActive ? "bold" : "normal",
+              textDecoration: "none",
+              transition: "color 0.2s",
+              cursor: "pointer",
+              paddingBottom: "2px",
+              borderBottom: isActive ? "2px solid #ff5500" : "2px solid transparent"
+            })}
+            onMouseOver={(e) => (e.currentTarget.style.color = "#fff")}
+            onMouseOut={(e) => {
+              const isActive = e.currentTarget.getAttribute("aria-current") === "page";
+              e.currentTarget.style.color = isActive ? "#ff5500" : "#ccc";
+            }}
+          >
+            Upload
+          </NavLink>
         </div>
 
         {/* Avatar and icons */}

@@ -108,4 +108,95 @@ public class ProfileService
             Following = followingList
         };
     }
+
+    public async Task<ProfileViewModel?> BuildProfileByUsernameAsync(string username, string accessToken)
+    {
+        var profile = await _supabase.GetProfileByUsernameAsync(username, accessToken);
+        if (profile == null)
+        {
+            return null;
+        }
+
+        var userId = profile.Id;
+
+        var trackRecords = await _supabase.GetTracksAsync(userId, accessToken);
+        var likes = await _supabase.GetLikedTracksAsync(userId, accessToken);
+        var relations = await _supabase.GetFollowingRelationsAsync(userId, accessToken);
+        var followingIds = relations.Select(r => r.FollowingId).Distinct().ToList();
+
+        var followingProfiles = await _supabase.GetProfilesByIdsAsync(followingIds, accessToken);
+        var followerCounts = await _supabase.GetFollowerCountsAsync(followingIds, accessToken);
+        var trackCounts = await _supabase.GetTracksCountsForUsersAsync(followingIds, accessToken);
+
+        var artistProfiles = await _supabase.GetProfilesByIdsAsync(
+            likes.Select(l => l.Track.UserId).Distinct(),
+            accessToken);
+
+        var artistLookup = artistProfiles.ToDictionary(p => p.Id);
+        var followerLookup = followerCounts
+            .GroupBy(f => f.FollowingId)
+            .ToDictionary(g => g.Key, g => g.Count());
+        var trackLookup = trackCounts
+            .GroupBy(t => t.UserId)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        var profileTracks = trackRecords.Select(record => new TrackSummary
+        {
+            Title = record.Title,
+            Plays = record.PlaysCount > int.MaxValue ? int.MaxValue : (int)record.PlaysCount,
+            Likes = record.LikesCount > int.MaxValue ? int.MaxValue : (int)record.LikesCount,
+            Artist = profile.FullName ?? profile.Username,
+            ArtistAvatar = profile.AvatarUrl
+        }).ToList();
+
+        var likedTracks = likes.Select(record =>
+        {
+            artistLookup.TryGetValue(record.Track.UserId, out var artistProfile);
+            return new TrackSummary
+            {
+                Title = record.Track.Title,
+                Plays = record.Track.PlaysCount > int.MaxValue ? int.MaxValue : (int)record.Track.PlaysCount,
+                Likes = record.Track.LikesCount > int.MaxValue ? int.MaxValue : (int)record.Track.LikesCount,
+                Artist = artistProfile?.FullName ?? artistProfile?.Username ?? string.Empty,
+                ArtistAvatar = artistProfile?.AvatarUrl
+            };
+        }).ToList();
+
+        var profileLookup = followingProfiles.ToDictionary(p => p.Id);
+        var orderedFollowing = followingIds
+            .Where(id => profileLookup.ContainsKey(id))
+            .Select(id => profileLookup[id])
+            .ToList();
+
+        var followingList = orderedFollowing.Select(profileRecord => new SimpleProfile
+        {
+            Id = profileRecord.Id,
+            Username = profileRecord.Username,
+            AvatarUrl = profileRecord.AvatarUrl,
+            Followers = followerLookup.TryGetValue(profileRecord.Id, out var followerTotal) ? followerTotal : 0,
+            Tracks = trackLookup.TryGetValue(profileRecord.Id, out var trackTotal) ? trackTotal : 0
+        }).ToList();
+
+        var followersCountTask = _supabase.GetFollowersCountAsync(userId, accessToken);
+        var followingCountTask = _supabase.GetFollowingCountAsync(userId, accessToken);
+        var tracksCountTask = _supabase.GetTracksCountAsync(userId, accessToken);
+        var likesCountTask = _supabase.GetLikesCountAsync(userId, accessToken);
+
+        var stats = new ProfileStats(
+            Followers: await followersCountTask,
+            Following: await followingCountTask,
+            Tracks: await tracksCountTask,
+            Likes: await likesCountTask
+        );
+
+        return new ProfileViewModel
+        {
+            Profile = profile,
+            Stats = stats,
+            Tracks = profileTracks,
+            Likes = likedTracks,
+            Following = followingList
+        };
+    }
 }
+

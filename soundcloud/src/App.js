@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from "react-router-dom";
 import Main from "./screens/main/main.jsx";
 import Profile from "./screens/profile/Profile.jsx";
 import LandingPage from "./screens/main/LandingPage.jsx";
+import Upload from "./screens/upload/upload.jsx";
 import NotFound from "./components/404.jsx";
 import { readAuthFlag } from "./utils/authFlag";
 
@@ -27,6 +28,8 @@ const App = () => {
     <Routes>
       <Route path="/" element={renderMain} />
       <Route path="/profile" element={isAuthenticated ? <Profile /> : <LandingPage />} />
+      <Route path="/profile/:username" element={isAuthenticated ? <Profile /> : <LandingPage />} />
+      <Route path="/upload" element={isAuthenticated ? <Upload /> : <LandingPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
