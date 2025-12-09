@@ -5,12 +5,39 @@
 /.pnp
 .pnp.js
 
+# package managers
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
 # testing
 /coverage
 
+# build output
+
+/.turbo
+.next
+dist
+tmp
+
+# caches
+.cache
+.parcel-cache
+.eslintcache
+*.tsbuildinfo
 # production
 /build
 
+.idea/
+.vs/
+.vscode/
+.history/
+.suo
+.ntvs_analysis.dat
+.vspscc
+.njsproj
+.sln.docstates
+.code-workspace
 # misc
 .DS_Store
 .env
@@ -20,5 +47,17 @@
 .env.production.local
 
 npm-debug.log*
+pnpm-debug.log*
+
+# dotnet build artifacts
+backend/**/bin/
+backend/**/obj/
+backend/**/App_Data/
+
+# generated static assets
+soundcloud/build/
+soundcloud/.firebase/
+soundcloud/firebase-debug.log
+soundcloud/public/*.map
 yarn-debug.log*
 yarn-error.log*

@@ -30,6 +30,7 @@ public class ProfileService
         }
 
         var trackRecords = await _supabase.GetTracksAsync(user.Id, accessToken);
+        var playlists = await _supabase.GetPlaylistsAsync(user.Id, user.Id, accessToken);
         var likes = await _supabase.GetLikedTracksAsync(user.Id, accessToken);
         var relations = await _supabase.GetFollowingRelationsAsync(user.Id, accessToken);
         var followingIds = relations.Select(r => r.FollowingId).Distinct().ToList();
@@ -52,11 +53,16 @@ public class ProfileService
 
         var profileTracks = trackRecords.Select(record => new TrackSummary
         {
+            TrackId = record.Id,
             Title = record.Title,
             Plays = record.PlaysCount > int.MaxValue ? int.MaxValue : (int)record.PlaysCount,
             Likes = record.LikesCount > int.MaxValue ? int.MaxValue : (int)record.LikesCount,
             Artist = profile.FullName ?? profile.Username,
-            ArtistAvatar = profile.AvatarUrl
+            ArtistId = profile.Id,
+            ArtistAvatar = profile.AvatarUrl,
+            CoverUrl = record.CoverUrl,
+            AudioUrl = record.AudioUrl,
+            DurationSeconds = record.DurationSeconds
         }).ToList();
 
         var likedTracks = likes.Select(record =>
@@ -64,11 +70,16 @@ public class ProfileService
             artistLookup.TryGetValue(record.Track.UserId, out var artistProfile);
             return new TrackSummary
             {
+                TrackId = record.Track.Id,
                 Title = record.Track.Title,
                 Plays = record.Track.PlaysCount > int.MaxValue ? int.MaxValue : (int)record.Track.PlaysCount,
                 Likes = record.Track.LikesCount > int.MaxValue ? int.MaxValue : (int)record.Track.LikesCount,
                 Artist = artistProfile?.FullName ?? artistProfile?.Username ?? string.Empty,
-                ArtistAvatar = artistProfile?.AvatarUrl
+                ArtistId = artistProfile?.Id ?? Guid.Empty,
+                ArtistAvatar = artistProfile?.AvatarUrl,
+                CoverUrl = record.Track.CoverUrl,
+                AudioUrl = record.Track.AudioUrl,
+                DurationSeconds = record.Track.DurationSeconds
             };
         }).ToList();
 
@@ -104,12 +115,13 @@ public class ProfileService
             Profile = profile,
             Stats = stats,
             Tracks = profileTracks,
+            Playlists = playlists,
             Likes = likedTracks,
             Following = followingList
         };
     }
 
-    public async Task<ProfileViewModel?> BuildProfileByUsernameAsync(string username, string accessToken)
+    public async Task<ProfileViewModel?> BuildProfileByUsernameAsync(string username, Guid viewerId, string accessToken)
     {
         var profile = await _supabase.GetProfileByUsernameAsync(username, accessToken);
         if (profile == null)
@@ -121,6 +133,7 @@ public class ProfileService
 
         var trackRecords = await _supabase.GetTracksAsync(userId, accessToken);
         var likes = await _supabase.GetLikedTracksAsync(userId, accessToken);
+        var playlists = await _supabase.GetPlaylistsAsync(userId, viewerId, accessToken);
         var relations = await _supabase.GetFollowingRelationsAsync(userId, accessToken);
         var followingIds = relations.Select(r => r.FollowingId).Distinct().ToList();
 
@@ -142,11 +155,16 @@ public class ProfileService
 
         var profileTracks = trackRecords.Select(record => new TrackSummary
         {
+            TrackId = record.Id,
             Title = record.Title,
             Plays = record.PlaysCount > int.MaxValue ? int.MaxValue : (int)record.PlaysCount,
             Likes = record.LikesCount > int.MaxValue ? int.MaxValue : (int)record.LikesCount,
             Artist = profile.FullName ?? profile.Username,
-            ArtistAvatar = profile.AvatarUrl
+            ArtistId = profile.Id,
+            ArtistAvatar = profile.AvatarUrl,
+            CoverUrl = record.CoverUrl,
+            AudioUrl = record.AudioUrl,
+            DurationSeconds = record.DurationSeconds
         }).ToList();
 
         var likedTracks = likes.Select(record =>
@@ -154,11 +172,16 @@ public class ProfileService
             artistLookup.TryGetValue(record.Track.UserId, out var artistProfile);
             return new TrackSummary
             {
+                TrackId = record.Track.Id,
                 Title = record.Track.Title,
                 Plays = record.Track.PlaysCount > int.MaxValue ? int.MaxValue : (int)record.Track.PlaysCount,
                 Likes = record.Track.LikesCount > int.MaxValue ? int.MaxValue : (int)record.Track.LikesCount,
                 Artist = artistProfile?.FullName ?? artistProfile?.Username ?? string.Empty,
-                ArtistAvatar = artistProfile?.AvatarUrl
+                ArtistId = artistProfile?.Id ?? Guid.Empty,
+                ArtistAvatar = artistProfile?.AvatarUrl,
+                CoverUrl = record.Track.CoverUrl,
+                AudioUrl = record.Track.AudioUrl,
+                DurationSeconds = record.Track.DurationSeconds
             };
         }).ToList();
 
@@ -194,6 +217,7 @@ public class ProfileService
             Profile = profile,
             Stats = stats,
             Tracks = profileTracks,
+            Playlists = playlists,
             Likes = likedTracks,
             Following = followingList
         };

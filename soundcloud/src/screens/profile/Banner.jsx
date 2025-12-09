@@ -1,17 +1,43 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { NavLink } from "react-router-dom";
 
 const navItems = [
-  { label: "All", path: "/profile" },
-  { label: "Popular Tracks", path: "/profile/popular" },
-  { label: "Tracks", path: "/profile/tracks" },
-  { label: "Playlists", path: "/profile/playlists" }
+  { label: "All", tab: "all" },
+  { label: "Popular Tracks", tab: "popular" },
+  { label: "Tracks", tab: "tracks" },
+  { label: "Playlists", tab: "playlists" }
 ];
 
-const Banner = ({ profile, loading, onEdit = () => {}, isOwnProfile = false }) => {
+const Banner = ({ profile, loading, onEdit = () => {}, isOwnProfile = false, activeTab = "all" }) => {
   const avatarUrl = profile?.avatar_url ?? "https://i.imgur.com/6unG5jv.png";
   const name = profile?.full_name ?? profile?.username ?? "Creator";
   const subtitle = profile?.bio ?? "Share your sound with the world.";
+  const basePath = useMemo(() => {
+    if (isOwnProfile) {
+      return "/profile";
+    }
+
+    const username = profile?.username;
+    if (!username) {
+      return "/profile";
+    }
+
+    return `/profile/${username}`;
+  }, [isOwnProfile, profile]);
+
+  const buildDestination = (tab) => {
+    if (tab === "all") {
+      return { pathname: basePath, search: "" };
+    }
+    return { pathname: basePath, search: `?tab=${tab}` };
+  };
+
+  const isTabActive = (tab) => {
+    if (tab === "all") {
+      return activeTab === "all";
+    }
+    return activeTab === tab;
+  };
   const bannerStyle = profile?.banner_url
     ? {
         backgroundImage: `linear-gradient(90deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 100%), url(${profile.banner_url})`,
@@ -90,16 +116,16 @@ const Banner = ({ profile, loading, onEdit = () => {}, isOwnProfile = false }) =
         <div style={{ display: "flex", gap: 28, fontSize: 14, color: "#cfcfcf" }}>
           {navItems.map(item => (
             <NavLink
-              key={item.path}
-              to={item.path}
-              style={({ isActive }) => ({
+              key={item.tab}
+              to={buildDestination(item.tab)}
+              style={() => ({
                 background: "none",
                 border: "none",
-                color: isActive ? "#fff" : "#cfcfcf",
-                fontWeight: isActive ? 600 : 500,
+                color: isTabActive(item.tab) ? "#fff" : "#cfcfcf",
+                fontWeight: isTabActive(item.tab) ? 600 : 500,
                 cursor: "pointer",
                 paddingBottom: 4,
-                borderBottom: isActive ? "2px solid #f50" : "2px solid transparent",
+                borderBottom: isTabActive(item.tab) ? "2px solid #f50" : "2px solid transparent",
                 textDecoration: "none"
               })}
             >

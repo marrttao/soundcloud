@@ -11,4 +11,10 @@
     <PackageReference Include="Supabase" Version="1.1.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="services/tokens.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

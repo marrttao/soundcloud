@@ -51,7 +51,13 @@ const Header = ({ avatarUrl }) => {
 
   const toggleMenu = () => setMenuOpen((open) => !open);
 
-  const profileRoutes = ["Profile", "Likes", "Playlists", "Following", "Tracks"];
+  const profileRoutes = [
+    { label: "Profile", to: "/profile" },
+    { label: "Likes", to: "/profile?tab=likes" },
+    { label: "Playlists", to: "/profile?tab=playlists" },
+    { label: "Following", to: "/profile?tab=following" },
+    { label: "Tracks", to: "/profile?tab=tracks" }
+  ];
 
   return (
     <header
@@ -190,19 +196,26 @@ const Header = ({ avatarUrl }) => {
                 <div style={{ padding: "8px 12px", borderTop: searchResults.profiles.length > 0 ? "1px solid #2d2d2d" : "none" }}>
                   <div style={{ color: "#999", fontSize: "12px", fontWeight: "600", marginBottom: "8px" }}>TRACKS</div>
                   {searchResults.tracks.map((track) => (
-                    <div
+                    <NavLink
                       key={track.id}
+                      to={`/tracks/${track.id}`}
+                      onClick={() => {
+                        setSearchOpen(false);
+                        setSearchQuery("");
+                      }}
                       style={{
+                        display: "block",
                         padding: "8px",
                         borderRadius: "4px",
-                        cursor: "pointer",
+                        textDecoration: "none",
+                        color: "#fff",
                         transition: "background 0.2s"
                       }}
                       onMouseOver={(e) => (e.currentTarget.style.background = "#1a1a1a")}
                       onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
                     >
-                      <div style={{ fontSize: "14px", color: "#fff" }}>{track.title}</div>
-                    </div>
+                      <div style={{ fontSize: "14px" }}>{track.title}</div>
+                    </NavLink>
                   ))}
                 </div>
               )}
@@ -350,8 +363,8 @@ const Header = ({ avatarUrl }) => {
             >
               {profileRoutes.map((item) => (
                 <NavLink
-                  key={item}
-                  to={`/${item.toLowerCase()}`}
+                  key={item.label}
+                  to={item.to}
                   style={({ isActive }) => ({
                     display: "block",
                     color: isActive ? "#ff5500" : "#fff",
@@ -364,7 +377,7 @@ const Header = ({ avatarUrl }) => {
                   onMouseOut={(e) => (e.currentTarget.style.color = "#fff")}
                   onClick={() => setMenuOpen(false)}
                 >
-                  {item}
+                  {item.label}
                 </NavLink>
               ))}
             </div>

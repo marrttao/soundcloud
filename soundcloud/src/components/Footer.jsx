@@ -1,27 +1,142 @@
-import React from 'react';
-import like from '../assets/icons/like.png';
-import next from '../assets/icons/next.png';
-import prev from '../assets/icons/prev.png';
-import pause from '../assets/icons/pause.png';
-import play from '../assets/icons/play.png';
-import shuffle from '../assets/icons/shuffle.png';
-import repeat from '../assets/icons/repeat.png';
-import subscribe from '../assets/icons/subscribe.png';
+import React, { useEffect, useRef, useState } from "react";
+import likeIcon from "../assets/icons/like.png";
+import nextIcon from "../assets/icons/next.png";
+import prevIcon from "../assets/icons/prev.png";
+import pauseIcon from "../assets/icons/pause.png";
+import playIcon from "../assets/icons/play.png";
+import shuffleIcon from "../assets/icons/shuffle.png";
+import repeatIcon from "../assets/icons/repeat.png";
+import subscribeIcon from "../assets/icons/subscribe.png";
+import { usePlayer } from "../context/PlayerContext";
+import AddToPlaylistModal from "./AddToPlaylistModal.jsx";
+
+const formatTime = (seconds) => {
+    if (!Number.isFinite(seconds) || seconds < 0) {
+        return "0:00";
+    }
+    const total = Math.floor(seconds);
+    const mins = Math.floor(total / 60);
+    const secs = total % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+};
 
 const Footer = () => {
+    const {
+        currentTrack,
+        isPlaying,
+        togglePlay,
+        next,
+        previous,
+        shuffle,
+        toggleShuffle,
+        repeatMode,
+        cycleRepeat,
+        progress,
+        duration,
+        seek,
+        likeCurrentTrack,
+        followCurrentArtist,
+        likeInFlight,
+        followInFlight
+    } = usePlayer();
+
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const menuRef = useRef(null);
+
+    useEffect(() => {
+        if (!menuOpen) {
+            return;
+        }
+
+        const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setMenuOpen(false);
+            }
+        };
+
+        const handleKeyDown = (event) => {
+            if (event.key === "Escape") {
+                setMenuOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [menuOpen]);
+
+    const hasTrack = Boolean(currentTrack);
+    const progressSeconds = hasTrack ? Math.min(progress ?? 0, duration ?? 0) : 0;
+    const formattedProgress = formatTime(progressSeconds);
+    const formattedDuration = formatTime(duration ?? 0);
+    const artistName = currentTrack?.artist?.displayName
+        ?? currentTrack?.artist?.fullName
+        ?? currentTrack?.artist?.username
+        ?? "";
+
+    const artworkUrl = currentTrack?.coverUrl
+        ?? currentTrack?.artworkUrl
+        ?? currentTrack?.artist?.avatarUrl
+        ?? null;
+
+    const handleSeek = (event) => {
+        if (!hasTrack) return;
+        const value = Number(event.target.value);
+        if (Number.isFinite(value)) {
+            seek(value);
+        }
+    };
+
+    const handleToggleLike = async () => {
+        if (!hasTrack || likeInFlight) return;
+        try {
+            await likeCurrentTrack();
+        } catch (error) {
+            console.error("Failed to toggle like", error);
+        }
+    };
+
+    const handleToggleFollow = async () => {
+        if (!hasTrack || followInFlight) return;
+        try {
+            await followCurrentArtist();
+        } catch (error) {
+            console.error("Failed to toggle follow", error);
+        }
+    };
+
+    const repeatLabel = repeatMode === "one" ? "1" : repeatMode === "all" ? "A" : "";
+
+    const toggleMenu = () => {
+        if (!hasTrack) return;
+        setMenuOpen((prev) => !prev);
+    };
+
+    const openAddToPlaylist = () => {
+        if (!hasTrack) return;
+        setShowAddModal(true);
+        setMenuOpen(false);
+    };
+
     return (
         <footer
             style={{
                 background: "#181818",
                 padding: "0 32px",
-                height: "56px",
+                height: "72px",
                 display: "flex",
                 alignItems: "center",
                 position: "fixed",
                 bottom: 0,
                 left: 0,
                 width: "100%",
-                zIndex: 1000
+                zIndex: 1000,
+                borderTop: "1px solid #222"
             }}
         >
             <div style={{
@@ -32,77 +147,200 @@ const Footer = () => {
                 gap: "32px",
                 margin: "0 auto"
             }}>
-                {/* Controls */}
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <button style={{ background: "none", border: "none", padding: 4 }}
-                        onMouseOver={e => e.currentTarget.firstChild.style.filter = "brightness(0) saturate(100%) invert(53%) sepia(98%) saturate(749%) hue-rotate(-13deg) brightness(1.1)"}
-                        onMouseOut={e => e.currentTarget.firstChild.style.filter = "invert(1) brightness(2)"}
+                    <button
+                        type="button"
+                        onClick={previous}
+                        disabled={!hasTrack}
+                        style={{ background: "none", border: "none", padding: 4, cursor: hasTrack ? "pointer" : "not-allowed" }}
                     >
-                        <img src={prev} alt="Prev" style={{ width: 16, height: 16, filter: "invert(1) brightness(2)", transition: "filter 0.2s" }} />
+                        <img src={prevIcon} alt="Previous" style={{ width: 16, height: 16, filter: "invert(1) brightness(2)", opacity: hasTrack ? 1 : 0.4 }} />
                     </button>
-                    <button style={{ background: "none", border: "none", padding: 4 }}
-                        onMouseOver={e => e.currentTarget.firstChild.style.filter = "brightness(0) saturate(100%) invert(53%) sepia(98%) saturate(749%) hue-rotate(-13deg) brightness(1.1)"}
-                        onMouseOut={e => e.currentTarget.firstChild.style.filter = "invert(1) brightness(2)"}
+                    <button
+                        type="button"
+                        onClick={togglePlay}
+                        disabled={!hasTrack}
+                        style={{ background: "none", border: "none", padding: 4, cursor: hasTrack ? "pointer" : "not-allowed" }}
                     >
-                        <img src={pause} alt="Pause" style={{ width: 16, height: 16, filter: "invert(1) brightness(2)", transition: "filter 0.2s" }} />
+                        <img src={isPlaying ? playIcon : pauseIcon} alt={isPlaying ? "Pause" : "Play"} style={{ width: 18, height: 18, filter: "invert(1) brightness(2)", opacity: hasTrack ? 1 : 0.4 }} />
                     </button>
-                    <button style={{ background: "none", border: "none", padding: 4 }}
-                        onMouseOver={e => e.currentTarget.firstChild.style.filter = "brightness(0) saturate(100%) invert(53%) sepia(98%) saturate(749%) hue-rotate(-13deg) brightness(1.1)"}
-                        onMouseOut={e => e.currentTarget.firstChild.style.filter = "invert(1) brightness(2)"}
+                    <button
+                        type="button"
+                        onClick={next}
+                        disabled={!hasTrack}
+                        style={{ background: "none", border: "none", padding: 4, cursor: hasTrack ? "pointer" : "not-allowed" }}
                     >
-                        <img src={next} alt="Next" style={{ width: 16, height: 16, filter: "invert(1) brightness(2)", transition: "filter 0.2s" }} />
+                        <img src={nextIcon} alt="Next" style={{ width: 16, height: 16, filter: "invert(1) brightness(2)", opacity: hasTrack ? 1 : 0.4 }} />
                     </button>
-                    <button style={{ background: "none", border: "none", padding: 4 }}
-                        onMouseOver={e => e.currentTarget.firstChild.style.filter = "brightness(0) saturate(100%) invert(53%) sepia(98%) saturate(749%) hue-rotate(-13deg) brightness(1.1)"}
-                        onMouseOut={e => e.currentTarget.firstChild.style.filter = "invert(1) brightness(2)"}
+                    <button
+                        type="button"
+                        onClick={toggleShuffle}
+                        style={{ background: "none", border: "none", padding: 4, cursor: "pointer" }}
                     >
-                        <img src={shuffle} alt="Shuffle" style={{ width: 16, height: 16, filter: "invert(1) brightness(2)", transition: "filter 0.2s" }} />
+                        <img
+                            src={shuffleIcon}
+                            alt="Shuffle"
+                            style={{
+                                width: 16,
+                                height: 16,
+                                filter: shuffle ? "invert(44%) sepia(61%) saturate(3529%) hue-rotate(349deg) brightness(100%) contrast(101%)" : "invert(1) brightness(2)",
+                                opacity: hasTrack ? 1 : 0.4
+                            }}
+                        />
                     </button>
-                    <button style={{ background: "none", border: "none", padding: 4 }}
-                        onMouseOver={e => e.currentTarget.firstChild.style.filter = "brightness(0) saturate(100%) invert(53%) sepia(98%) saturate(749%) hue-rotate(-13deg) brightness(1.1)"}
-                        onMouseOut={e => e.currentTarget.firstChild.style.filter = "invert(1) brightness(2)"}
+                    <button
+                        type="button"
+                        onClick={cycleRepeat}
+                        style={{ background: "none", border: "none", padding: 4, cursor: "pointer", position: "relative" }}
                     >
-                        <img src={repeat} alt="Repeat" style={{ width: 16, height: 16, filter: "invert(1) brightness(2)", transition: "filter 0.2s" }} />
+                        <img
+                            src={repeatIcon}
+                            alt="Repeat"
+                            style={{
+                                width: 16,
+                                height: 16,
+                                filter: repeatMode === "off" ? "invert(1) brightness(2)" : "invert(44%) sepia(61%) saturate(3529%) hue-rotate(349deg) brightness(100%) contrast(101%)",
+                                opacity: hasTrack ? 1 : 0.4
+                            }}
+                        />
+                        {repeatLabel && (
+                            <span style={{ position: "absolute", top: -6, right: -6, fontSize: 10, color: "#ff5500" }}>{repeatLabel}</span>
+                        )}
                     </button>
                 </div>
-                {/* Progress bar */}
+
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
-                    <span style={{ color: "#fff", fontSize: 13 }}>0:52</span>
-                    <div style={{ flex: 1, height: "4px", background: "#232323", borderRadius: "2px", position: "relative" }}>
-                        <div style={{ width: "20%", height: "100%", background: "#ff5500", borderRadius: "2px" }}></div>
-                    </div>
-                    <span style={{ color: "#fff", fontSize: 13 }}>2:51</span>
+                    <span style={{ color: "#fff", fontSize: 13, width: 42, textAlign: "right" }}>{formattedProgress}</span>
+                    <input
+                        type="range"
+                        min={0}
+                        max={Math.max(duration ?? 0, progress ?? 0)}
+                        step={0.5}
+                        value={progressSeconds}
+                        onChange={handleSeek}
+                        disabled={!hasTrack}
+                        style={{ flex: 1 }}
+                    />
+                    <span style={{ color: "#fff", fontSize: 13, width: 42 }}>{formattedDuration}</span>
                 </div>
-                {/* Track info */}
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: "160px" }}>
-                    <img src="track logo" alt="" style={{ width: "32px", height: "32px", borderRadius: "4px", background: "#444" }} />
+
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: "200px" }}>
+                    <div style={{ width: 42, height: 42, borderRadius: 8, background: "#262626", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {artworkUrl ? (
+                            <img
+                                src={artworkUrl}
+                                alt={currentTrack?.title ?? "Artwork"}
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            />
+                        ) : (
+                            <span style={{ color: "#777", fontSize: 18 }}>♪</span>
+                        )}
+                    </div>
                     <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                        <span style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>Lolishit</span>
-                        <span style={{ color: "#ccc", fontSize: 12 }}>A.L.S.</span>
+                        <span style={{ color: "#fff", fontSize: 14, fontWeight: 600 }}>
+                            {hasTrack ? currentTrack.title : "Nothing playing"}
+                        </span>
+                        <span style={{ color: "#ccc", fontSize: 12 }}>{artistName}</span>
                     </div>
                 </div>
-                {/* Actions */}
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <button style={{ background: "none", border: "none", padding: 4 }}
-                        onMouseOver={e => e.currentTarget.firstChild.style.filter = "brightness(0) saturate(100%) invert(53%) sepia(98%) saturate(749%) hue-rotate(-13deg) brightness(1.1)"}
-                        onMouseOut={e => e.currentTarget.firstChild.style.filter = "invert(1) brightness(2)"}
+
+                <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "12px" }} ref={menuRef}>
+                    <button
+                        type="button"
+                        onClick={handleToggleLike}
+                        disabled={!hasTrack}
+                        style={{ background: "none", border: "none", padding: 4, cursor: hasTrack ? "pointer" : "not-allowed" }}
                     >
-                        <img src={like} alt="Like" style={{ width: 16, height: 16, filter: "invert(1) brightness(2)", transition: "filter 0.2s" }} />
+                        <img
+                            src={likeIcon}
+                            alt="Like"
+                            style={{
+                                width: 16,
+                                height: 16,
+                                filter: currentTrack?.isLiked ? "invert(44%) sepia(61%) saturate(3529%) hue-rotate(349deg) brightness(100%) contrast(101%)" : "invert(1) brightness(2)",
+                                opacity: hasTrack ? 1 : 0.4
+                            }}
+                        />
                     </button>
-                    <button style={{ background: "none", border: "none", padding: 4 }}
-                        onMouseOver={e => e.currentTarget.firstChild.style.filter = "brightness(0) saturate(100%) invert(53%) sepia(98%) saturate(749%) hue-rotate(-13deg) brightness(1.1)"}
-                        onMouseOut={e => e.currentTarget.firstChild.style.filter = "invert(1) brightness(2)"}
+                    <button
+                        type="button"
+                        onClick={handleToggleFollow}
+                        disabled={!hasTrack}
+                        style={{ background: "none", border: "none", padding: 4, cursor: hasTrack ? "pointer" : "not-allowed" }}
                     >
-                        <img src={subscribe} alt="Subscribe" style={{ width: 16, height: 16, filter: "invert(1) brightness(2)", transition: "filter 0.2s" }} />
+                        <img
+                            src={subscribeIcon}
+                            alt="Follow"
+                            style={{
+                                width: 16,
+                                height: 16,
+                                filter: currentTrack?.isFollowing ? "invert(44%) sepia(61%) saturate(3529%) hue-rotate(349deg) brightness(100%) contrast(101%)" : "invert(1) brightness(2)",
+                                opacity: hasTrack ? 1 : 0.4
+                            }}
+                        />
                     </button>
-                    <button style={{ background: "none", border: "none", color: "#fff", fontSize: 18, padding: 4 }}
-                        onMouseOver={e => e.currentTarget.style.color = "#ff5500"}
-                        onMouseOut={e => e.currentTarget.style.color = "#fff"}
+                    <button
+                        type="button"
+                        onClick={toggleMenu}
+                        disabled={!hasTrack}
+                        style={{
+                            background: "none",
+                            border: "none",
+                            padding: 4,
+                            cursor: hasTrack ? "pointer" : "not-allowed",
+                            color: "#fff",
+                            fontSize: 18,
+                            opacity: hasTrack ? 1 : 0.4,
+                            lineHeight: 1
+                        }}
+                        aria-haspopup="true"
+                        aria-expanded={menuOpen}
                     >
                         ⋮
                     </button>
+                    {menuOpen && hasTrack && (
+                        <div
+                            style={{
+                                position: "absolute",
+                                bottom: "calc(100% + 8px)",
+                                right: 0,
+                                background: "#1f1f1f",
+                                border: "1px solid #303030",
+                                borderRadius: 10,
+                                padding: 8,
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 4,
+                                minWidth: 180,
+                                boxShadow: "0 12px 32px rgba(0,0,0,0.35)"
+                            }}
+                        >
+                            <button
+                                type="button"
+                                onClick={openAddToPlaylist}
+                                style={{
+                                    background: "none",
+                                    border: "none",
+                                    color: "#f5f5f5",
+                                    textAlign: "left",
+                                    padding: "10px 12px",
+                                    borderRadius: 8,
+                                    cursor: "pointer",
+                                    fontSize: 14
+                                }}
+                            >
+                                Add to playlist
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
+            <AddToPlaylistModal
+                open={showAddModal && hasTrack}
+                trackId={currentTrack?.id}
+                onClose={() => setShowAddModal(false)}
+                onAdded={() => setShowAddModal(false)}
+            />
         </footer>
     );
 };

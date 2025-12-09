@@ -1,57 +1,105 @@
-import React from "react";
+import React, { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { usePlayer } from "../../context/PlayerContext";
 
 const formatCount = (value = 0) =>
   value >= 1000 ? `${(value / 1000).toFixed(1).replace(/\.0$/, "")}K` : value.toString();
 
-const TrackList = ({ title, tracks }) => (
-  <div style={{ marginBottom: 32 }}>
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-      <span style={{ fontWeight: 600, fontSize: 14, letterSpacing: 0.5 }}>{title}</span>
-      <button style={{
-        background: "none",
-        border: "none",
-        color: "#bbb",
-        fontSize: 13,
-        cursor: "pointer",
-        fontWeight: 500
-      }}>View all</button>
-    </div>
-    <div>
-      {tracks?.length ? tracks.map((track, idx) => (
-        <div key={`${track.title}-${idx}`} style={{
-          display: "flex",
-          alignItems: "center",
-          marginBottom: 18
-        }}>
-          <div style={{
-            width: 40,
-            height: 40,
-            borderRadius: 6,
-            background: "#222",
-            marginRight: 14,
-            overflow: "hidden"
+const TrackList = ({ title, tracks }) => {
+  const navigate = useNavigate();
+  const { playTrack } = usePlayer();
+
+  const queueDescriptors = useMemo(() => (
+    tracks?.map((track) => ({
+      id: track.trackId,
+      title: track.title,
+      artistName: track.artist,
+      artistId: track.artistId ?? null,
+      audioUrl: track.audioUrl ?? null,
+      durationSeconds: track.durationSeconds ?? null
+    })) ?? []
+  ), [tracks]);
+
+  const handlePlay = (index) => async () => {
+    const descriptor = queueDescriptors[index];
+    if (!descriptor?.id) {
+      return;
+    }
+    try {
+      await playTrack(descriptor, { queue: queueDescriptors });
+    } catch (error) {
+      console.error("Failed to start playback", error);
+    }
+  };
+
+  return (
+    <div style={{ marginBottom: 32 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <span style={{ fontWeight: 600, fontSize: 14, letterSpacing: 0.5 }}>{title}</span>
+        <button style={{
+          background: "none",
+          border: "none",
+          color: "#bbb",
+          fontSize: 13,
+          cursor: "pointer",
+          fontWeight: 500
+        }}>View all</button>
+      </div>
+      <div>
+        {tracks?.length ? tracks.map((track, idx) => (
+          <div key={`${track.trackId ?? track.title}-${idx}`} style={{
+            display: "flex",
+            alignItems: "center",
+            marginBottom: 18,
+            gap: 12
           }}>
-            <img src={track.artistAvatar ?? "https://i.imgur.com/6unG5jv.png"} alt="" style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover"
-            }} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>{track.artist}</div>
-            <div style={{ color: "#fff", fontSize: 13, fontWeight: 500, marginBottom: 2 }}>{track.title}</div>
-            <div style={{ display: "flex", gap: 12, color: "#bbb", fontSize: 12 }}>
-              <span>▶ {formatCount(track.plays)}</span>
-              <span>♥ {formatCount(track.likes)}</span>
+            <button
+              type="button"
+              onClick={handlePlay(idx)}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                border: "1px solid #2f2f2f",
+                background: "#1f1f1f",
+                color: "#fff",
+                cursor: "pointer"
+              }}
+            >
+              ▶
+            </button>
+            <div style={{
+              width: 40,
+              height: 40,
+              borderRadius: 6,
+              background: "#222",
+              overflow: "hidden"
+            }}>
+              <img src={track.artistAvatar ?? "https://i.imgur.com/6unG5jv.png"} alt="" style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover"
+              }} />
+            </div>
+            <div
+              style={{ flex: 1, cursor: "pointer" }}
+              onClick={() => track.trackId && navigate(`/tracks/${track.trackId}`)}
+            >
+              <div style={{ fontWeight: 600, fontSize: 14 }}>{track.artist}</div>
+              <div style={{ color: "#fff", fontSize: 13, fontWeight: 500, marginBottom: 2 }}>{track.title}</div>
+              <div style={{ display: "flex", gap: 12, color: "#bbb", fontSize: 12 }}>
+                <span>▶ {formatCount(track.plays)}</span>
+                <span>♥ {formatCount(track.likes)}</span>
+              </div>
             </div>
           </div>
-        </div>
-      )) : (
-        <p style={{ color: "#777", fontSize: 13 }}>No tracks yet.</p>
-      )}
+        )) : (
+          <p style={{ color: "#777", fontSize: 13 }}>No tracks yet.</p>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const SideBar = ({ stats, likes, following, loading }) => {
   const statItems = [

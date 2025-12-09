@@ -114,6 +114,25 @@
   box-shadow: 0 8px 20px rgba(255, 255, 255, 0.08);
 }
 
+.primary-btn[disabled],
+.secondary-btn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.primary-btn[disabled]:hover {
+  background: transparent;
+  color: #f5f5f5;
+}
+
+.error-text {
+  color: #ff6b6b;
+  font-size: 12px;
+  text-align: right;
+}
+
 .upload-footer {
   padding: 24px;
   text-align: center;

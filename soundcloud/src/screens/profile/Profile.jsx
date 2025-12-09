@@ -1,19 +1,29 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Header from "../../components/Header.jsx";
 import Footer from "../../components/Footer.jsx";
 import SideBar from "./SideBar.jsx";
 import Banner from "./Banner.jsx";
 import ProfileSetupModal from "../main/ProfileSetupModal";
+import CreatePlaylistModal from "./CreatePlaylistModal.jsx";
 import { fetchProfile, fetchProfileByUsername } from "../../api/profile";
+import UserTracks from "./UserTracks.jsx";
+import UserPlaylists from "./UserPlaylists.jsx";
 
 const Profile = () => {
   const { username } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const tabWhitelist = useMemo(() => new Set(["popular", "tracks", "playlists", "likes", "following"]), []);
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const tabParam = (searchParams.get("tab") ?? "").toLowerCase();
+  const activeTab = tabWhitelist.has(tabParam) ? tabParam : "all";
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
+  const [showCreatePlaylistModal, setShowCreatePlaylistModal] = useState(false);
 
   // Получить профиль текущего пользователя для сравнения
   useEffect(() => {
@@ -32,9 +42,27 @@ const Profile = () => {
   const refreshProfile = useCallback(async () => {
     setLoading(true);
     try {
-      const data = username 
-        ? await fetchProfileByUsername(username)
-        : await fetchProfile();
+      let data;
+      if (username) {
+        try {
+          data = await fetchProfileByUsername(username);
+        } catch (err) {
+          const normalized = username.toLowerCase();
+          const status = err?.response?.status;
+          if (status === 404 && tabWhitelist.has(normalized)) {
+            data = await fetchProfile();
+            if (!location.search) {
+              const canonical = normalized === "all" ? "/profile" : `/profile?tab=${normalized}`;
+              navigate(canonical, { replace: true });
+            }
+          } else {
+            throw err;
+          }
+        }
+      } else {
+        data = await fetchProfile();
+      }
+
       setProfileData(data);
       setError("");
     } catch (err) {
@@ -42,7 +70,7 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
-  }, [username]);
+  }, [location.search, navigate, tabWhitelist, username]);
 
   useEffect(() => {
     refreshProfile();
@@ -50,6 +78,66 @@ const Profile = () => {
 
   // Проверка является ли это своим профилем
   const isOwnProfile = !username || (currentUserProfile && profileData?.profile?.username === currentUserProfile?.username);
+  const tracks = profileData?.tracks ?? [];
+  const playlists = profileData?.playlists ?? [];
+  const likedTracks = profileData?.likes ?? [];
+
+  const renderMainContent = () => {
+    switch (activeTab) {
+      case "tracks":
+        return <UserTracks tracks={tracks} loading={loading} title="Tracks" />;
+      case "popular":
+        return <UserTracks tracks={tracks} loading={loading} title="Popular Tracks" />;
+      case "playlists":
+        return (
+          <UserPlaylists
+            playlists={playlists}
+            loading={loading}
+            title="Playlists"
+            isOwnProfile={isOwnProfile}
+            onCreate={() => setShowCreatePlaylistModal(true)}
+            onPlaylistClick={(playlistId) => navigate(`/playlists/${playlistId}`)}
+          />
+        );
+      case "likes":
+        return <UserTracks tracks={likedTracks} loading={loading} title="Liked Tracks" />;
+      case "following":
+        return (
+          <section
+            style={{
+              width: "100%",
+              maxWidth: 880,
+              background: "#141414",
+              borderRadius: 12,
+              border: "1px solid #222",
+              padding: 24,
+              boxSizing: "border-box",
+              boxShadow: "0 12px 32px rgba(0,0,0,0.25)",
+              marginBottom: 24,
+              color: "#ccc",
+              fontSize: 14
+            }}
+          >
+            <h2 style={{ margin: 0, marginBottom: 16, fontSize: 20, fontWeight: 700, color: "#fff" }}>Following</h2>
+            <p style={{ margin: 0 }}>Check the sidebar to explore creators this user follows.</p>
+          </section>
+        );
+      default:
+        return (
+          <>
+            <UserTracks tracks={tracks} loading={loading} title="Tracks" />
+            <UserPlaylists
+              playlists={playlists}
+              loading={loading}
+              title="Playlists"
+              isOwnProfile={isOwnProfile}
+              onCreate={() => setShowCreatePlaylistModal(true)}
+              onPlaylistClick={(playlistId) => navigate(`/playlists/${playlistId}`)}
+            />
+          </>
+        );
+    }
+  };
 
   return (
     <div style={{
@@ -81,10 +169,14 @@ const Profile = () => {
             loading={loading} 
             onEdit={() => setShowEditModal(true)} 
             isOwnProfile={isOwnProfile}
+            activeTab={activeTab}
           />
         </div>
-        <div style={{ width: "100%", maxWidth: 1240, display: "flex", justifyContent: "flex-end" }}>
-          <div style={{ width: 360 }}>
+        <div style={{ width: "100%", maxWidth: 1240, display: "flex", alignItems: "flex-start", gap: 32 }}>
+          <div style={{ width: "100%", maxWidth: 880, flexShrink: 0 }}>
+            {renderMainContent()}
+          </div>
+          <div style={{ width: 360, flexShrink: 0 }}>
             <SideBar
               stats={profileData?.stats}
               likes={profileData?.likes}
@@ -112,6 +204,16 @@ const Profile = () => {
             setShowEditModal(false);
             await refreshProfile();
           }}
+        />
+      )}
+      {showCreatePlaylistModal && (
+        <CreatePlaylistModal
+          onClose={() => setShowCreatePlaylistModal(false)}
+          onSuccess={async () => {
+            setShowCreatePlaylistModal(false);
+            await refreshProfile();
+          }}
+          availableTracks={tracks}
         />
       )}
     </div>

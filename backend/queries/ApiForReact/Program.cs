@@ -1,5 +1,8 @@
 using System;
+using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
@@ -28,6 +31,7 @@ namespace queries.ApiForReact
             builder.Services.AddScoped<UpdateService>();
             builder.Services.AddScoped<DeleteService>();
             builder.Services.AddScoped<ProfileService>();
+            builder.Services.AddScoped<HomeSidebarService>();
 
             // CORS so React can call this API
             builder.Services.AddCors(options => options.AddPolicy("Any", p =>
@@ -139,8 +143,140 @@ namespace queries.ApiForReact
                     return Results.Unauthorized();
                 }
 
-                var profile = await profileService.BuildProfileByUsernameAsync(username, token);
+                var profile = await profileService.BuildProfileByUsernameAsync(username, user.Id, token);
                 return profile is { } ? Results.Ok(profile) : Results.NotFound();
+            });
+
+            app.MapGet("/playlists", async (HttpRequest httpRequest, SupabaseService supabase) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                var playlists = await supabase.GetPlaylistsAsync(user.Id, user.Id, token, httpRequest.HttpContext.RequestAborted);
+                return Results.Ok(playlists);
+            });
+
+            app.MapPost("/playlists", async (PlaylistCreateRequest request, HttpRequest httpRequest, SupabaseService supabase) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                try
+                {
+                    var playlist = await supabase.CreatePlaylistAsync(user.Id, request, token, httpRequest.HttpContext.RequestAborted);
+                    return playlist is { } ? Results.Ok(playlist) : Results.BadRequest();
+                }
+                catch (HttpRequestException ex)
+                {
+                    var status = ex.StatusCode ?? HttpStatusCode.BadRequest;
+                    return Results.StatusCode((int)status);
+                }
+            });
+
+            app.MapPatch("/playlists/{playlistId}", async (string playlistId, PlaylistUpdateRequest request, HttpRequest httpRequest, SupabaseService supabase) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                try
+                {
+                    var playlist = await supabase.UpdatePlaylistAsync(playlistId, user.Id, request, token, httpRequest.HttpContext.RequestAborted);
+                    return playlist is { } ? Results.Ok(playlist) : Results.NotFound();
+                }
+                catch (HttpRequestException ex)
+                {
+                    var status = ex.StatusCode ?? HttpStatusCode.BadRequest;
+                    return Results.StatusCode((int)status);
+                }
+            });
+
+            app.MapGet("/playlists/{playlistId}", async (string playlistId, HttpRequest httpRequest, SupabaseService supabase) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                var detail = await supabase.GetPlaylistDetailAsync(playlistId, user.Id, token, httpRequest.HttpContext.RequestAborted);
+                return detail is { } ? Results.Ok(detail) : Results.NotFound();
+            });
+
+            app.MapPost("/playlists/{playlistId}/tracks", async (string playlistId, PlaylistTrackAddRequest request, HttpRequest httpRequest, SupabaseService supabase) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                try
+                {
+                    await supabase.AddTrackToPlaylistAsync(playlistId, user.Id, request, token, httpRequest.HttpContext.RequestAborted);
+                    return Results.Ok();
+                }
+                catch (HttpRequestException ex)
+                {
+                    var status = ex.StatusCode ?? HttpStatusCode.BadRequest;
+                    return Results.StatusCode((int)status);
+                }
+            });
+
+            app.MapGet("/home/sidebar", async (HttpRequest httpRequest, SupabaseService supabase, HomeSidebarService sidebarService) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                var viewModel = await sidebarService.BuildSidebarAsync(user.Id, token);
+                return Results.Ok(viewModel);
             });
 
             app.MapGet("/search", async (HttpRequest httpRequest, SupabaseService supabase, string? q) =>
@@ -160,6 +296,184 @@ namespace queries.ApiForReact
                 var tracks = await supabase.SearchTracksAsync(q, token);
                 
                 return Results.Ok(new { profiles, tracks });
+            });
+
+            app.MapPost("/tracks/upload", async (HttpRequest httpRequest, SupabaseService supabase) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                if (!httpRequest.HasFormContentType)
+                {
+                    return Results.BadRequest("Expected multipart/form-data payload.");
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                var form = await httpRequest.ReadFormAsync();
+                var file = form.Files.GetFile("file");
+                if (file == null || file.Length == 0)
+                {
+                    return Results.BadRequest("Audio file is required.");
+                }
+
+                var coverFile = form.Files.GetFile("coverFile");
+
+                var rawTitle = form["title"].FirstOrDefault();
+                var trackTitle = BuildTrackTitle(rawTitle, file.FileName);
+                var storageFileName = BuildStorageFileName(rawTitle, file.FileName);
+                var storagePath = $"{user.Id}/{storageFileName}";
+
+                using var stream = file.OpenReadStream();
+                var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
+
+                var uploadResult = await supabase.UploadTrackAsync(stream, storagePath, contentType, token);
+
+                var description = NormalizeOptionalString(form["description"].FirstOrDefault());
+                var coverUrlInput = NormalizeOptionalString(form["coverUrl"].FirstOrDefault());
+                var durationSeconds = ParseNullableInt(form["durationSeconds"].FirstOrDefault());
+                var isPrivate = ParseNullableBool(form["isPrivate"].FirstOrDefault());
+
+                string? coverPublicUrl = null;
+                if (coverFile != null && coverFile.Length > 0)
+                {
+                    var coverFileName = BuildCoverFileName(rawTitle, coverFile.FileName);
+                    var coverStoragePath = $"{user.Id}/covers/{coverFileName}";
+                    using var coverStream = coverFile.OpenReadStream();
+                    var coverContentType = string.IsNullOrWhiteSpace(coverFile.ContentType) ? "image/jpeg" : coverFile.ContentType;
+                    var coverUploadResult = await supabase.UploadTrackAsync(coverStream, coverStoragePath, coverContentType, token);
+                    coverPublicUrl = coverUploadResult.PublicUrl;
+                }
+                else if (!string.IsNullOrWhiteSpace(coverUrlInput))
+                {
+                    coverPublicUrl = coverUrlInput;
+                }
+
+                var trackPayload = new TrackInsertPayload
+                {
+                    UserId = user.Id,
+                    Title = trackTitle,
+                    Description = description,
+                    AudioUrl = uploadResult.PublicUrl,
+                    CoverUrl = coverPublicUrl,
+                    DurationSeconds = durationSeconds,
+                    IsPrivate = isPrivate
+                };
+
+                var trackRecord = await supabase.CreateTrackRecordAsync(trackPayload, token, httpRequest.HttpContext.RequestAborted);
+
+                return Results.Ok(new { uploadResult.Path, uploadResult.PublicUrl, Track = trackRecord });
+            });
+
+            app.MapGet("/tracks/{trackId:long}", async (long trackId, HttpRequest httpRequest, SupabaseService supabase) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                var track = await supabase.GetTrackDetailAsync(trackId, user.Id, token, httpRequest.HttpContext.RequestAborted);
+                if (track == null)
+                {
+                    return Results.NotFound();
+                }
+
+                var artist = await supabase.GetProfileByIdAsync(track.UserId, token);
+                if (artist == null)
+                {
+                    return Results.NotFound();
+                }
+
+                var isLiked = await supabase.IsTrackLikedAsync(user.Id, trackId, token);
+                var isFollowing = await supabase.IsFollowingAsync(user.Id, artist.Id, token);
+
+                return Results.Ok(new TrackDetailResponse(track, artist, isLiked, isFollowing));
+            });
+
+            app.MapPost("/tracks/{trackId:long}/like", async (long trackId, HttpRequest httpRequest, SupabaseService supabase) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                await supabase.LikeTrackAsync(user.Id, trackId, token, httpRequest.HttpContext.RequestAborted);
+                return Results.Ok(new { liked = true });
+            });
+
+            app.MapDelete("/tracks/{trackId:long}/like", async (long trackId, HttpRequest httpRequest, SupabaseService supabase) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                await supabase.UnlikeTrackAsync(user.Id, trackId, token, httpRequest.HttpContext.RequestAborted);
+                return Results.Ok(new { liked = false });
+            });
+
+            app.MapPost("/profiles/{artistId:guid}/follow", async (Guid artistId, HttpRequest httpRequest, SupabaseService supabase) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                await supabase.FollowUserAsync(user.Id, artistId, token, httpRequest.HttpContext.RequestAborted);
+                return Results.Ok(new { following = true });
+            });
+
+            app.MapDelete("/profiles/{artistId:guid}/follow", async (Guid artistId, HttpRequest httpRequest, SupabaseService supabase) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                await supabase.UnfollowUserAsync(user.Id, artistId, token, httpRequest.HttpContext.RequestAborted);
+                return Results.Ok(new { following = false });
             });
 
             await app.RunAsync();
@@ -183,6 +497,111 @@ namespace queries.ApiForReact
             response.Dispose();
             httpContext.Response.StatusCode = status;
             return Results.Content(payload, "application/json");
+        }
+
+        private static string BuildTrackTitle(string? title, string originalFileName)
+        {
+            if (!string.IsNullOrWhiteSpace(title))
+            {
+                return title.Trim();
+            }
+
+            var fallback = Path.GetFileNameWithoutExtension(originalFileName);
+            return string.IsNullOrWhiteSpace(fallback) ? "Untitled Track" : fallback;
+        }
+
+        private static string? NormalizeOptionalString(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            var trimmed = value.Trim();
+            return string.IsNullOrEmpty(trimmed) ? null : trimmed;
+        }
+
+        private static int? ParseNullableInt(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+                ? parsed
+                : null;
+        }
+
+        private static bool? ParseNullableBool(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            var trimmed = value.Trim();
+
+            if (bool.TryParse(trimmed, out var parsed))
+            {
+                return parsed;
+            }
+
+            return trimmed.ToLowerInvariant() switch
+            {
+                "1" => true,
+                "0" => false,
+                "on" => true,
+                "off" => false,
+                _ => null
+            };
+        }
+
+        private static string BuildStorageFileName(string? title, string originalFileName)
+        {
+            var baseName = string.IsNullOrWhiteSpace(title)
+                ? Path.GetFileNameWithoutExtension(originalFileName)
+                : title.Trim();
+
+            var normalized = baseName.Normalize(NormalizationForm.FormD);
+            var filtered = normalized.Where(ch => CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark);
+
+            var sanitized = new string(filtered
+                .Select(ch =>
+                {
+                    var lower = char.ToLowerInvariant(ch);
+                    return (lower is >= 'a' and <= 'z') || (lower is >= '0' and <= '9') ? lower : '-';
+                })
+                .ToArray());
+
+            while (sanitized.Contains("--"))
+            {
+                sanitized = sanitized.Replace("--", "-");
+            }
+
+            sanitized = sanitized.Trim('-');
+            if (string.IsNullOrWhiteSpace(sanitized))
+            {
+                sanitized = "track";
+            }
+
+            var extension = Path.GetExtension(originalFileName);
+            extension = string.IsNullOrWhiteSpace(extension) ? ".mp3" : extension.ToLowerInvariant();
+
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            return $"{sanitized}-{timestamp}{extension}";
+        }
+
+        private static string BuildCoverFileName(string? title, string originalFileName)
+        {
+            var fileName = BuildStorageFileName(title, originalFileName);
+            var extension = Path.GetExtension(fileName);
+            if (string.IsNullOrWhiteSpace(extension) || extension.Equals(".mp3", StringComparison.OrdinalIgnoreCase))
+            {
+                fileName = Path.ChangeExtension(fileName, ".jpg");
+            }
+
+            return fileName;
         }
     }
 

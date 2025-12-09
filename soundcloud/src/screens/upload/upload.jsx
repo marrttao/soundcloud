@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./upload.css";
 import logo from "../../assets/img/logo.png";
+import { uploadTrack } from "../../api/upload";
 
 const Upload = () => {
 	const [modalOpen, setModalOpen] = useState(false);
@@ -9,6 +10,12 @@ const Upload = () => {
 	const [audioUrl, setAudioUrl] = useState("");
 	const [title, setTitle] = useState("");
 	const [coverUrl, setCoverUrl] = useState("");
+	const [coverFile, setCoverFile] = useState(null);
+	const [description, setDescription] = useState("");
+	const [isPrivate, setIsPrivate] = useState(false);
+	const [durationSeconds, setDurationSeconds] = useState(null);
+	const [isUploading, setIsUploading] = useState(false);
+	const [error, setError] = useState("");
 	const coverFileUrlRef = useRef("");
 	const audioRef = useRef(null);
 	const fileInputRef = useRef(null);
@@ -28,6 +35,12 @@ const Upload = () => {
 		setAudioUrl("");
 		setTitle("");
 		setCoverUrl("");
+		setCoverFile(null);
+		setDescription("");
+		setIsPrivate(false);
+		setDurationSeconds(null);
+		setIsUploading(false);
+		setError("");
 		if (coverFileUrlRef.current) {
 			URL.revokeObjectURL(coverFileUrlRef.current);
 			coverFileUrlRef.current = "";
@@ -36,8 +49,18 @@ const Upload = () => {
 
 	const closeModal = () => {
 		setModalOpen(false);
+		setStep("select");
 		if (audioUrl) URL.revokeObjectURL(audioUrl);
 		setAudioUrl("");
+		setSelectedFile(null);
+		setTitle("");
+		setCoverUrl("");
+		setCoverFile(null);
+		setDescription("");
+		setIsPrivate(false);
+		setDurationSeconds(null);
+		setIsUploading(false);
+		setError("");
 		if (coverFileUrlRef.current) {
 			URL.revokeObjectURL(coverFileUrlRef.current);
 			coverFileUrlRef.current = "";
@@ -51,6 +74,7 @@ const Upload = () => {
 		setAudioUrl(url);
 		const baseName = file.name.replace(/\.[^.]+$/, "");
 		setTitle(baseName);
+		setDurationSeconds(null);
 		setStep("details");
 	};
 
@@ -68,6 +92,12 @@ const Upload = () => {
 		const url = URL.createObjectURL(file);
 		coverFileUrlRef.current = url;
 		setCoverUrl(url);
+		setCoverFile(file);
+	};
+
+	const onCoverUrlChange = (e) => {
+		setCoverFile(null);
+		setCoverUrl(e.target.value);
 	};
 
 	const triggerFileSelect = () => {
@@ -87,9 +117,36 @@ const Upload = () => {
 		}
 	};
 
-	const handleSave = () => {
-		// Placeholder for upload logic
-		closeModal();
+	const handleMetadataLoaded = (event) => {
+		if (!event?.target) return;
+		const rawDuration = Number.isFinite(event.target.duration) ? event.target.duration : 0;
+		setDurationSeconds(rawDuration > 0 ? Math.round(rawDuration) : null);
+	};
+
+	const handleSave = async () => {
+		if (!selectedFile || isUploading) return;
+		setIsUploading(true);
+		setError("");
+
+		try {
+			await uploadTrack({
+				file: selectedFile,
+				title: title.trim(),
+				coverFile,
+				coverUrl: coverFile ? "" : coverUrl.trim(),
+				description: description.trim(),
+				isPrivate,
+				durationSeconds: durationSeconds ?? undefined
+			});
+			closeModal();
+		} catch (err) {
+			const message = err?.response?.data?.error
+				?? err?.response?.data
+				?? err?.message
+				?? "Не удалось загрузить трек";
+			setError(typeof message === "string" ? message : "Не удалось загрузить трек");
+			setIsUploading(false);
+		}
 	};
 
 	return (
@@ -157,7 +214,7 @@ const Upload = () => {
 									<div className="field-inline">
 										<input
 											value={coverUrl}
-											onChange={(e) => setCoverUrl(e.target.value)}
+											onChange={onCoverUrlChange}
 											placeholder="https://... or leave empty"
 										/>
 										<button type="button" className="secondary-btn" onClick={triggerCoverSelect}>
@@ -172,6 +229,25 @@ const Upload = () => {
 										/>
 									</div>
 								</div>
+								<div className="field">
+									<label>Description</label>
+									<textarea
+										value={description}
+										onChange={(e) => setDescription(e.target.value)}
+										placeholder="Tell listeners about your track"
+										rows={4}
+									/>
+								</div>
+								<div className="field checkbox-field">
+									<label>
+										<input
+											type="checkbox"
+											checked={isPrivate}
+											onChange={(e) => setIsPrivate(e.target.checked)}
+										/>
+										Make track private
+									</label>
+								</div>
 								<div className="preview-row">
 									<div className="preview-cover">
 										{coverUrl ? (
@@ -182,16 +258,35 @@ const Upload = () => {
 									</div>
 									<div className="preview-audio">
 										<div className="file-name">{selectedFile?.name}</div>
-										<audio ref={audioRef} src={audioUrl} controls className="audio-player" preload="metadata" />
+										<audio
+											ref={audioRef}
+											src={audioUrl}
+											controls
+											className="audio-player"
+											preload="metadata"
+											onLoadedMetadata={handleMetadataLoaded}
+										/>
+										{durationSeconds !== null && (
+											<div className="audio-duration">Duration: {durationSeconds} sec</div>
+										)}
 										<button type="button" className="primary-btn" onClick={handlePlayPause}>
 											Play / Pause
 										</button>
 									</div>
 								</div>
 								<div className="modal-actions">
-									<button className="secondary-btn" type="button" onClick={closeModal}>Cancel</button>
-									<button className="primary-btn" type="button" onClick={handleSave}>Save & Upload</button>
+									<button className="secondary-btn" type="button" onClick={closeModal} disabled={isUploading}>Cancel</button>
+									<button
+										className="primary-btn"
+										type="button"
+										onClick={handleSave}
+										disabled={!selectedFile || isUploading}
+										aria-busy={isUploading}
+									>
+										{isUploading ? "Uploading..." : "Save & Upload"}
+									</button>
 								</div>
+								{error && <div className="error-text" role="alert">{error}</div>}
 							</div>
 						)}
 					</div>
