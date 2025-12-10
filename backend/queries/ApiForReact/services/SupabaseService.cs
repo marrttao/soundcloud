@@ -211,6 +211,30 @@ public class SupabaseService
         return await ReadJsonAsync<List<ListeningHistoryRecord>>(response) ?? new List<ListeningHistoryRecord>();
     }
 
+    public async Task<List<TrackRecord>> GetLatestTracksForUsersAsync(IEnumerable<Guid> userIds, int limit, string accessToken, CancellationToken cancellationToken = default)
+    {
+        var idList = userIds
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+        if (!idList.Any())
+        {
+            return new List<TrackRecord>();
+        }
+
+        var effectiveLimit = limit > 0 ? limit : 20;
+        var path = $"/rest/v1/tracks?select=id,title,plays_count,likes_count,user_id,audio_url,cover_url,duration_seconds,created_at&user_id=in.({FormatInList(idList)})&is_private=is.false&order=created_at.desc&limit={effectiveLimit}";
+
+        using var response = await _httpClient.SendAsync(CreateAuthRequest(HttpMethod.Get, path, null, accessToken), cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return new List<TrackRecord>();
+        }
+
+        return await response.Content.ReadFromJsonAsync<List<TrackRecord>>(_jsonOptions, cancellationToken) ?? new List<TrackRecord>();
+    }
+
     public async Task<List<FollowingRelation>> GetFollowingRelationsAsync(Guid userId, string accessToken)
     {
         var path = $"/rest/v1/follows?select=following_id&follower_id=eq.{userId}&order=created_at.desc&limit=6";
@@ -243,6 +267,24 @@ public class SupabaseService
         }
 
         return await ReadJsonAsync<List<FollowingRelation>>(response) ?? new List<FollowingRelation>();
+    }
+
+    public async Task<List<Guid>> GetFollowingIdsAsync(Guid userId, string accessToken, int limit = 64)
+    {
+        var limitClause = limit > 0 ? $"&limit={limit}" : string.Empty;
+        var path = $"/rest/v1/follows?select=following_id&follower_id=eq.{userId}&order=created_at.desc{limitClause}";
+        var response = await SendAuthRequestAsync(HttpMethod.Get, path, null, accessToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return new List<Guid>();
+        }
+
+        var payload = await ReadJsonAsync<List<FollowingRelation>>(response) ?? new List<FollowingRelation>();
+        return payload
+            .Select(relation => relation.FollowingId)
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
     }
 
     public async Task<List<FollowerCount>> GetFollowerCountsAsync(IEnumerable<Guid> ids, string accessToken)
@@ -627,6 +669,48 @@ public class SupabaseService
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
             throw new HttpRequestException(string.IsNullOrWhiteSpace(body) ? "Unable to unfollow user." : body, null, response.StatusCode);
         }
+    }
+
+    public async Task<List<PlaylistSummary>> GetLatestPlaylistsForUsersAsync(IEnumerable<Guid> userIds, int limit, string accessToken, CancellationToken cancellationToken = default)
+    {
+        var idList = userIds
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+        if (!idList.Any())
+        {
+            return new List<PlaylistSummary>();
+        }
+
+        var effectiveLimit = limit > 0 ? limit : 20;
+        var path = $"/rest/v1/playlists?select=id,user_id,title,description,cover_url,is_private,created_at&user_id=in.({FormatInList(idList)})&is_private=is.false&order=created_at.desc&limit={effectiveLimit}";
+
+        using var response = await _httpClient.SendAsync(CreateAuthRequest(HttpMethod.Get, path, null, accessToken), cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return new List<PlaylistSummary>();
+        }
+
+        var raw = await response.Content.ReadFromJsonAsync<List<PlaylistRecord>>(_jsonOptions, cancellationToken) ?? new List<PlaylistRecord>();
+        if (!raw.Any())
+        {
+            return new List<PlaylistSummary>();
+        }
+
+        var counts = await GetPlaylistTrackCountsAsync(raw.Select(record => record.Id), cancellationToken);
+
+        return raw.Select(record => new PlaylistSummary
+        {
+            Id = record.Id,
+            UserId = record.UserId,
+            Title = record.Title,
+            Description = record.Description,
+            CoverUrl = record.CoverUrl,
+            IsPrivate = record.IsPrivate ?? false,
+            TrackCount = counts.TryGetValue(record.Id, out var count) ? count : 0,
+            CreatedAt = record.CreatedAt
+        }).ToList();
     }
 
     public async Task<List<PlaylistSummary>> GetPlaylistsAsync(Guid ownerId, Guid viewerId, string accessToken, CancellationToken cancellationToken = default)

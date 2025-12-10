@@ -70,6 +70,7 @@ public record TrackSummary
     public string? CoverUrl { get; init; }
     public int? DurationSeconds { get; init; }
     public DateTimeOffset? PlayedAt { get; init; }
+    public DateTimeOffset? CreatedAt { get; init; }
 }
 
 public record SimpleProfile
@@ -152,6 +153,9 @@ public record TrackRecord
 
     [JsonPropertyName("duration_seconds")]
     public int? DurationSeconds { get; init; }
+
+    [JsonPropertyName("created_at")]
+    public DateTimeOffset? CreatedAt { get; init; }
 }
 
 public record TrackLikeRecord
@@ -385,4 +389,43 @@ public record PlaylistIdRecord
 {
     [JsonPropertyName("playlist_id")]
     public string PlaylistId { get; init; } = string.Empty;
+}
+
+public record FeedOwner
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; init; }
+
+    [JsonPropertyName("username")]
+    public string Username { get; init; } = string.Empty;
+
+    [JsonPropertyName("displayName")]
+    public string DisplayName { get; init; } = string.Empty;
+
+    [JsonPropertyName("avatarUrl")]
+    public string? AvatarUrl { get; init; }
+}
+
+public record FeedItem
+{
+    [JsonPropertyName("type")]
+    public string Type { get; init; } = string.Empty;
+
+    [JsonPropertyName("owner")]
+    public FeedOwner Owner { get; init; } = null!;
+
+    [JsonPropertyName("track")]
+    public TrackSummary? Track { get; init; }
+
+    [JsonPropertyName("playlist")]
+    public PlaylistSummary? Playlist { get; init; }
+
+    [JsonPropertyName("createdAt")]
+    public DateTimeOffset? CreatedAt { get; init; }
+}
+
+public record FeedResponse
+{
+    [JsonPropertyName("items")]
+    public List<FeedItem> Items { get; init; } = new();
 }

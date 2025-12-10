@@ -6,6 +6,7 @@ using System.Text;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
+using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +33,7 @@ namespace queries.ApiForReact
             builder.Services.AddScoped<DeleteService>();
             builder.Services.AddScoped<ProfileService>();
             builder.Services.AddScoped<HomeSidebarService>();
+            builder.Services.AddScoped<FeedService>();
 
             // CORS so React can call this API
             builder.Services.AddCors(options => options.AddPolicy("Any", p =>
@@ -277,6 +279,24 @@ namespace queries.ApiForReact
 
                 var viewModel = await sidebarService.BuildSidebarAsync(user.Id, token);
                 return Results.Ok(viewModel);
+            });
+
+            app.MapGet("/feed", async (HttpRequest httpRequest, SupabaseService supabase, FeedService feedService, CancellationToken cancellationToken) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                var feed = await feedService.BuildFeedAsync(user.Id, token, cancellationToken);
+                return Results.Ok(feed);
             });
 
             app.MapGet("/search", async (HttpRequest httpRequest, SupabaseService supabase, string? q) =>

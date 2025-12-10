@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from "react-router-dom";
 import Main from "./screens/main/main.jsx";
 import Profile from "./screens/profile/Profile.jsx";
 import LandingPage from "./screens/main/LandingPage.jsx";
+import FeedPage from "./screens/feed/FeedPage.jsx";
 import Upload from "./screens/upload/upload.jsx";
 import NotFound from "./components/404.jsx";
 import TrackPage from "./screens/track/TrackPage.jsx";
@@ -31,6 +32,7 @@ const App = () => {
       <Route path="/" element={renderMain} />
       <Route path="/profile" element={isAuthenticated ? <Profile /> : <LandingPage />} />
       <Route path="/profile/:username" element={isAuthenticated ? <Profile /> : <LandingPage />} />
+      <Route path="/feed" element={isAuthenticated ? <FeedPage /> : <LandingPage />} />
       <Route path="/upload" element={isAuthenticated ? <Upload /> : <LandingPage />} />
       <Route path="/tracks/:trackId" element={isAuthenticated ? <TrackPage /> : <LandingPage />} />
       <Route path="/playlists/:playlistId" element={isAuthenticated ? <PlaylistPage /> : <LandingPage />} />
