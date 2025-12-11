@@ -31,6 +31,52 @@ const resolveTrackTotal = (playlist) => {
   return 0;
 };
 
+const hasValue = (value) => typeof value === "string" && value.trim().length > 0;
+
+const pickTrackCover = (track) => {
+  if (!track || typeof track !== "object") {
+    return null;
+  }
+  const candidate = track.coverUrl
+    ?? track.cover_url
+    ?? track.artwork
+    ?? track.artworkUrl
+    ?? track.image
+    ?? track.imageUrl
+    ?? track.image_url
+    ?? track.thumbnail
+    ?? track.thumbnailUrl
+    ?? track.artistAvatar;
+  return hasValue(candidate) ? candidate.trim() : null;
+};
+
+const resolvePlaylistCover = (playlist) => {
+  if (!playlist || typeof playlist !== "object") {
+    return FALLBACK_PLAYLIST_COVER;
+  }
+
+  const leadCover = playlist.firstTrackCoverUrl ?? playlist.first_track_cover_url;
+  if (hasValue(leadCover)) {
+    return leadCover.trim();
+  }
+
+  const firstTrack = playlist.firstTrack
+    ?? (Array.isArray(playlist.previewTracks) && playlist.previewTracks.length ? playlist.previewTracks[0] : null)
+    ?? (Array.isArray(playlist.tracks) && playlist.tracks.length ? playlist.tracks[0] : null);
+
+  const derivedCover = pickTrackCover(firstTrack);
+  if (derivedCover) {
+    return derivedCover;
+  }
+
+  const explicitCover = playlist.coverUrl ?? playlist.cover_url ?? playlist.artwork ?? playlist.artworkUrl;
+  if (hasValue(explicitCover)) {
+    return explicitCover.trim();
+  }
+
+  return FALLBACK_PLAYLIST_COVER;
+};
+
 const badgeStyle = {
   display: "inline-flex",
   alignItems: "center",
@@ -96,7 +142,7 @@ const UserPlaylists = ({
       }}>
         {playlists.map((playlist, idx) => {
           const trackTotal = resolveTrackTotal(playlist);
-          const cover = playlist?.coverUrl ?? playlist?.cover_url ?? playlist?.artwork ?? FALLBACK_PLAYLIST_COVER;
+          const cover = resolvePlaylistCover(playlist);
           const titleText = playlist?.title ?? playlist?.name ?? "Untitled playlist";
           const descriptionText = playlist?.description ?? playlist?.summary ?? "Add tracks to start building this playlist.";
 

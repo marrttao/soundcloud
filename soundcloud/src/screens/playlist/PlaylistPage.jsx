@@ -7,6 +7,7 @@ import Footer from "../../components/Footer.jsx";
 import { usePlayer } from "../../context/PlayerContext";
 import pauseIcon from "../../assets/icons/pause.png";
 import playIcon from "../../assets/icons/play.png";
+import "./playlist.css";
 
 const FALLBACK_PLAYLIST_COVER = "https://i.imgur.com/6unG5jv.png";
 const MIN_SEARCH_LENGTH = 2;
@@ -676,7 +677,11 @@ const PlaylistPage = () => {
                       aria-label={isPlaylistPlaying ? "Pause playlist" : "Play playlist"}
                       title={isPlaylistPlaying ? "Pause playlist" : "Play playlist"}
                     >
-                      <img src={isPlaylistPlaying ? pauseIcon : playIcon} alt="" aria-hidden="true" />
+                      <img
+                        src={isPlaylistPlaying ? playIcon : pauseIcon}
+                        alt=""
+                        aria-hidden="true"
+                      />
                     </button>
                     {isOwner && (
                       <button
@@ -920,7 +925,8 @@ const PlaylistPage = () => {
               maxWidth: 520,
               background: "#1b1b1b",
               border: "1px solid #2a2a2a",
-                        borderRadius: 0,
+              borderRadius: 18,
+              boxShadow: "0 30px 80px rgba(0,0,0,0.6)",
               padding: 24,
               display: "flex",
               flexDirection: "column",
@@ -960,7 +966,7 @@ const PlaylistPage = () => {
                       style={{
                         width: "100%",
                         padding: "10px 12px",
-                        borderRadius: 0,
+                        borderRadius: 10,
                         border: "1px solid #2d2d2d",
                         background: "#151515",
                         color: "#f5f5f5",
@@ -980,7 +986,7 @@ const PlaylistPage = () => {
                       style={{
                         width: "100%",
                         padding: "10px 12px",
-                        borderRadius: 0,
+                        borderRadius: 10,
                         border: "1px solid #2d2d2d",
                         background: "#151515",
                         color: "#f5f5f5",
@@ -999,7 +1005,7 @@ const PlaylistPage = () => {
                       background: canSaveDetails ? "#ff5500" : "#3a3a3a",
                       color: "#fff",
                       border: "none",
-                        borderRadius: 0,
+                      borderRadius: 999,
                       padding: "8px 22px",
                       fontWeight: 600,
                       letterSpacing: 0.3,
@@ -1027,7 +1033,7 @@ const PlaylistPage = () => {
                     style={{
                       width: "100%",
                       padding: "10px 12px",
-                              borderRadius: 0,
+                      borderRadius: 10,
                       border: "1px solid #2d2d2d",
                       background: "#151515",
                       color: "#f5f5f5",
@@ -1043,7 +1049,7 @@ const PlaylistPage = () => {
                       top: "calc(100% + 6px)",
                       background: "#121212",
                       border: "1px solid #2d2d2d",
-                      borderRadius: 0,
+                      borderRadius: 12,
                       padding: 12,
                       display: "flex",
                       flexDirection: "column",
@@ -1072,7 +1078,7 @@ const PlaylistPage = () => {
                             alignItems: "center",
                             gap: 12,
                             padding: "10px 12px",
-                            borderRadius: 0,
+                            borderRadius: 12,
                             background: "#181818",
                             border: "1px solid #2c2c2c"
                           }}
@@ -1091,7 +1097,7 @@ const PlaylistPage = () => {
                               background: addingTrackId === option.id ? "#3a3a3a" : "#ff5500",
                               color: "#fff",
                               border: "none",
-                              borderRadius: 0,
+                              borderRadius: 999,
                               padding: "6px 18px",
                               fontWeight: 600,
                               cursor: addingTrackId === option.id ? "default" : "pointer"
@@ -1128,7 +1134,7 @@ const PlaylistPage = () => {
                           gap: 12,
                           padding: "12px 14px",
                           border: "1px solid #2d2d2d",
-                          borderRadius: 0,
+                          borderRadius: 12,
                           background: "#181818"
                         }}
                       >
@@ -1147,7 +1153,7 @@ const PlaylistPage = () => {
                             background: removing ? "#3a3a3a" : "#ff7a7a",
                             border: "none",
                             color: "#fff",
-                            borderRadius: 0,
+                            borderRadius: 999,
                             padding: "6px 18px",
                             fontWeight: 600,
                             cursor: removing || deletingPlaylist ? "not-allowed" : "pointer"
@@ -1177,7 +1183,7 @@ const PlaylistPage = () => {
                   background: deletingPlaylist ? "#3a3a3a" : "#ff3b3b",
                   border: "none",
                   color: "#fff",
-                      borderRadius: 0,
+                  borderRadius: 999,
                   padding: "10px 22px",
                   fontWeight: 600,
                   cursor: deletingPlaylist ? "not-allowed" : "pointer"

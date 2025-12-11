@@ -95,11 +95,6 @@ const Upload = () => {
 		setCoverFile(file);
 	};
 
-	const onCoverUrlChange = (e) => {
-		setCoverFile(null);
-		setCoverUrl(e.target.value);
-	};
-
 	const triggerFileSelect = () => {
 		fileInputRef.current?.click();
 	};
@@ -204,77 +199,79 @@ const Upload = () => {
 						)}
 
 						{step === "details" && (
-							<div className="modal-body">
-								<div className="field">
-									<label>Title</label>
-									<input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Track title" />
-								</div>
-								<div className="field">
-									<label>Cover image</label>
-									<div className="field-inline">
-										<input
-											value={coverUrl}
-											onChange={onCoverUrlChange}
-											placeholder="https://... or leave empty"
-										/>
-										<button type="button" className="secondary-btn" onClick={triggerCoverSelect}>
-											Upload file
-										</button>
-										<input
-											type="file"
-											accept="image/*"
-											ref={coverInputRef}
-											onChange={onCoverFileChange}
-											style={{ display: "none" }}
+							<div className="modal-body details-view">
+								<div className="details-grid">
+									<div className="field field-span-full">
+										<label>Title</label>
+										<input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Track title" />
+									</div>
+									<div className="field">
+										<label>Cover image</label>
+										<div className="field-inline" style={{ gap: 12, alignItems: "center" }}>
+											<button type="button" className="secondary-btn" onClick={triggerCoverSelect}>
+												Upload file
+											</button>
+											<span className="field-hint">
+												{coverFile ? coverFile.name : "PNG, JPG, WEBP up to 10MB"}
+											</span>
+											<input
+												type="file"
+												accept="image/*"
+												ref={coverInputRef}
+												onChange={onCoverFileChange}
+												style={{ display: "none" }}
+											/>
+										</div>
+									</div>
+									<div className="field field-span-full">
+										<label>Description</label>
+										<textarea
+											value={description}
+											onChange={(e) => setDescription(e.target.value)}
+											placeholder="Tell listeners about your track"
+											rows={4}
 										/>
 									</div>
-								</div>
-								<div className="field">
-									<label>Description</label>
-									<textarea
-										value={description}
-										onChange={(e) => setDescription(e.target.value)}
-										placeholder="Tell listeners about your track"
-										rows={4}
-									/>
-								</div>
-								<div className="field checkbox-field">
-									<label>
-										<input
-											type="checkbox"
-											checked={isPrivate}
-											onChange={(e) => setIsPrivate(e.target.checked)}
-										/>
-										Make track private
-									</label>
-								</div>
-								<div className="preview-row">
-									<div className="preview-cover">
-										{coverUrl ? (
-											<img src={coverUrl} alt="Cover" />
-										) : (
-											<div className="cover-placeholder">No cover</div>
-										)}
-									</div>
-									<div className="preview-audio">
-										<div className="file-name">{selectedFile?.name}</div>
-										<audio
-											ref={audioRef}
-											src={audioUrl}
-											controls
-											className="audio-player"
-											preload="metadata"
-											onLoadedMetadata={handleMetadataLoaded}
-										/>
-										{durationSeconds !== null && (
-											<div className="audio-duration">Duration: {durationSeconds} sec</div>
-										)}
-										<button type="button" className="primary-btn" onClick={handlePlayPause}>
-											Play / Pause
-										</button>
+									<div className="field checkbox-field field-span-full">
+										<label>
+											<input
+												type="checkbox"
+												checked={isPrivate}
+												onChange={(e) => setIsPrivate(e.target.checked)}
+											/>
+											Make track private
+										</label>
 									</div>
 								</div>
-								<div className="modal-actions">
+								<div className="section-card preview-section">
+									<div className="preview-row">
+										<div className="preview-cover">
+											{coverUrl ? (
+												<img src={coverUrl} alt="Cover" />
+											) : (
+												<div className="cover-placeholder">No cover</div>
+											)}
+										</div>
+										<div className="preview-audio">
+											<div className="file-name">{selectedFile?.name}</div>
+											<audio
+												ref={audioRef}
+												src={audioUrl}
+												controls
+												className="audio-player"
+												preload="metadata"
+												onLoadedMetadata={handleMetadataLoaded}
+											/>
+											{durationSeconds !== null && (
+												<div className="audio-duration">Duration: {durationSeconds} sec</div>
+											)}
+											<button type="button" className="primary-btn" onClick={handlePlayPause}>
+												Play / Pause
+											</button>
+										</div>
+									</div>
+								</div>
+								<div className="modal-actions section-card actions-card">
 									<button className="secondary-btn" type="button" onClick={closeModal} disabled={isUploading}>Cancel</button>
 									<button
 										className="primary-btn"

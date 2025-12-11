@@ -38,6 +38,9 @@ public record ProfileDto
 
     [JsonPropertyName("bio")]
     public string? Bio { get; init; }
+
+    [JsonPropertyName("is_following")]
+    public bool IsFollowing { get; init; }
 }
 
 public record ProfileUpsertRequest
@@ -326,6 +329,7 @@ public record PlaylistSummary
     public string Title { get; init; } = string.Empty;
     public string? Description { get; init; }
     public string? CoverUrl { get; init; }
+    public string? FirstTrackCoverUrl { get; init; }
     public bool IsPrivate { get; init; }
     public int TrackCount { get; init; }
     public DateTimeOffset? CreatedAt { get; init; }

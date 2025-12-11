@@ -10,6 +10,7 @@ import { fetchProfile, fetchProfileByUsername } from "../../api/profile";
 import UserTracks from "./UserTracks.jsx";
 import UserPlaylists from "./UserPlaylists.jsx";
 import { useCurrentProfile } from "../../context/ProfileContext";
+import { followArtist, unfollowArtist } from "../../api/track";
 
 const Profile = () => {
   const { username } = useParams();
@@ -26,6 +27,7 @@ const Profile = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCreatePlaylistModal, setShowCreatePlaylistModal] = useState(false);
   const [lastFetchedKey, setLastFetchedKey] = useState(null);
+  const [followBusy, setFollowBusy] = useState(false);
   const { profile: currentUserProfile } = useCurrentProfile();
 
   useEffect(() => {
@@ -87,6 +89,8 @@ const Profile = () => {
   const playlists = profileData?.playlists ?? [];
   const likedTracks = profileData?.likes ?? [];
   const likedPlaylists = profileData?.liked_playlists ?? [];
+  const targetProfileId = profileData?.profile?.id ?? null;
+  const isFollowing = Boolean(profileData?.profile?.is_following);
 
   const renderMainContent = () => {
     switch (activeTab) {
@@ -157,6 +161,45 @@ const Profile = () => {
     }
   };
 
+  const handleToggleFollow = useCallback(async () => {
+    if (!targetProfileId || isOwnProfile || followBusy) {
+      return;
+    }
+
+    setFollowBusy(true);
+    setError("");
+    const shouldFollow = !isFollowing;
+
+    try {
+      if (shouldFollow) {
+        await followArtist(String(targetProfileId));
+      } else {
+        await unfollowArtist(String(targetProfileId));
+      }
+
+      setProfileData((prev) => {
+        if (!prev || !prev.profile) {
+          return prev;
+        }
+
+        const baseFollowers = typeof prev?.stats?.followers === "number" ? prev.stats.followers : 0;
+        const followerDelta = shouldFollow ? 1 : -1;
+        const nextFollowers = Math.max(0, baseFollowers + followerDelta);
+
+        return {
+          ...prev,
+          profile: { ...prev.profile, is_following: shouldFollow },
+          stats: prev.stats ? { ...prev.stats, followers: nextFollowers } : prev.stats
+        };
+      });
+    } catch (err) {
+      console.error("Failed to toggle follow status", err);
+      setError(err?.response?.data ?? err?.message ?? "Unable to update follow status.");
+    } finally {
+      setFollowBusy(false);
+    }
+  }, [followBusy, followArtist, unfollowArtist, isFollowing, isOwnProfile, setProfileData, targetProfileId]);
+
   return (
     <div style={{
       minHeight: "100vh",
@@ -188,6 +231,9 @@ const Profile = () => {
             onEdit={() => setShowEditModal(true)} 
             isOwnProfile={isOwnProfile}
             activeTab={activeTab}
+            onToggleFollow={handleToggleFollow}
+            followBusy={followBusy}
+            isFollowing={isFollowing}
           />
         </div>
         <div style={{ width: "100%", maxWidth: 1240, display: "flex", alignItems: "flex-start", gap: 32 }}>

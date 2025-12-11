@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { completeProfile } from "../../api/profile";
+import { completeProfile, checkUsernameAvailability } from "../../api/profile";
 
 const defaultValues = {
   username: "",
@@ -55,17 +55,31 @@ const ProfileSetupModal = ({
   };
 
   const handleSave = async () => {
-    if (!values.username) {
+    const trimmedUsername = values.username.trim();
+    if (!trimmedUsername) {
       setStatus({ message: "Username is required", type: "error" });
       return;
     }
 
+    const initialUsername = mergedInitialValues.username?.trim().toLowerCase() ?? "";
+    const currentUsername = trimmedUsername.toLowerCase();
+    const usernameChanged = initialUsername !== currentUsername;
+
     setSaving(true);
     setStatus({ message: "", type: "" });
     try {
-      await completeProfile(values);
+      if (usernameChanged) {
+        const availability = await checkUsernameAvailability(trimmedUsername);
+        if (!availability?.available) {
+          setStatus({ message: "That username is already taken", type: "error" });
+          return;
+        }
+      }
+
+      const payload = { ...values, username: trimmedUsername };
+      await completeProfile(payload);
       setStatus({ message: "Profile saved", type: "success" });
-      onSuccess?.(values);
+      onSuccess?.(payload);
     } catch (error) {
       setStatus({
         message:
@@ -176,33 +190,19 @@ const ProfileSetupModal = ({
         <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span style={{ fontSize: 12, color: "#aaa" }}>Avatar</span>
           <input
-            type="url"
-            value={values.avatarUrl.startsWith("data:") ? "" : values.avatarUrl}
-            onChange={handleChange("avatarUrl")}
-            placeholder="https://..."
-            style={styles.inputs}
-          />
-          <input
             type="file"
             accept="image/*"
             onChange={handleFileChange("avatarUrl")}
-            style={{ marginTop: 4 }}
+            style={styles.inputs}
           />
         </label>
         <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span style={{ fontSize: 12, color: "#aaa" }}>Banner image</span>
           <input
-            type="url"
-            value={values.bannerUrl.startsWith("data:") ? "" : values.bannerUrl}
-            onChange={handleChange("bannerUrl")}
-            placeholder="https://..."
-            style={styles.inputs}
-          />
-          <input
             type="file"
             accept="image/*"
             onChange={handleFileChange("bannerUrl")}
-            style={{ marginTop: 4 }}
+            style={styles.inputs}
           />
         </label>
         <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>

@@ -7,6 +7,7 @@ import { followArtist, unfollowArtist } from "../../api/track";
 const FALLBACK_AVATAR = "https://i.imgur.com/6unG5jv.png";
 const PERSON_ICON = "\u{1F464}\uFE0E";
 const MUSIC_NOTE_ICON = "\u{1F3B5}\uFE0E";
+const METRIC_ICON_COLOR = "#fff";
 
 const coerceNumber = (value, fallback = 0) => {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -419,11 +420,11 @@ const SideBar = () => {
                   <div style={{ color: "#777", fontSize: 12 }}>@{artist.username}</div>
                   <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
                     <span style={{ color: "#bbb", fontSize: 13 }}>
-                      <span style={{ marginRight: 3, color: "#bbb" }}>{PERSON_ICON}</span>
+                      <span style={{ marginRight: 3, color: METRIC_ICON_COLOR }}>{PERSON_ICON}</span>
                       {formatCount(artist.followers)}
                     </span>
                     <span style={{ color: "#bbb", fontSize: 13 }}>
-                      <span style={{ marginRight: 3, color: "#bbb" }}>{MUSIC_NOTE_ICON}</span>
+                      <span style={{ marginRight: 3, color: METRIC_ICON_COLOR }}>{MUSIC_NOTE_ICON}</span>
                       {formatCount(artist.tracks)}
                     </span>
                   </div>

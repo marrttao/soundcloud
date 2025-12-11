@@ -46,3 +46,17 @@ export const completeProfile = async (payload) => {
     handleAuthFailure(error);
   }
 };
+
+export const checkUsernameAvailability = async (username) => {
+  const token = readAccessToken();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  try {
+    const response = await client.get("/profile/check-username", {
+      headers,
+      params: { username }
+    });
+    return response.data;
+  } catch (error) {
+    handleAuthFailure(error);
+  }
+};

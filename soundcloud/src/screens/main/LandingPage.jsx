@@ -7,6 +7,7 @@ import logo from "../../assets/landing/icons/logo.png";
 import cross from "../../assets/landing/img/cross.png";
 import creators from "../../assets/landing/img/creators.png";
 import { signIn, signUp, authErrorMessage } from "../../api/auth";
+import { completeProfile } from "../../api/profile";
 import { useNavigate } from "react-router-dom";
 import {
   setAuthFlag,
@@ -49,6 +50,18 @@ const slides = [
     ctaa: "Explore Go+ "
   }
 ];
+
+const FEATURED_SLIDES = slides.slice(0, 2);
+const CTA_EXCLUSIONS = new Set([
+  "explore artist pro",
+  "for artists",
+  "google app",
+  "google play",
+  "get it on google play",
+  "download on the app store",
+  "app store",
+  "apple store"
+]);
 
 // сгруппированные стили
 const buttonReset = {
@@ -192,7 +205,8 @@ const styles = {
   trendingTop: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
+    gap: 12,
     marginBottom: 40,
     width: 850,
     height: 46,
@@ -200,27 +214,29 @@ const styles = {
   },
   searchInput: {
     flex: 1,
-    padding: "12px 16px",
-    backgroundColor: "#333",
-    border: "1px solid #444",
-    borderRadius: 6,
+    width: "100%",
+    padding: "0 14px",
+    background: "#232323",
+    border: "none",
+    borderRadius: 4,
     color: "#fff",
     fontSize: 14,
-    marginRight: 12,
     height: "100%",
-    boxSizing: "border-box"
+    boxSizing: "border-box",
+    cursor: "pointer",
+    textAlign: "left"
   },
   orText: {
     color: "#999",
-    fontSize: 14,
-    marginRight: 12
+    fontSize: 14
   },
   uploadBtn: {
     ...buttonReset,
     padding: "0 24px",
     background: "#fff",
     color: "#000",
-    border: "none"
+    border: "none",
+    height: "100%"
   },
   trendingTitle: {
     fontSize: 28,
@@ -292,19 +308,10 @@ const styles = {
     gap: 16,
     justifyContent: "flex-start"
   },
-  appStoreBtn: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "0 16px",
-    background: "#000",
-    color: "#fff",
-    border: "none",
-    borderRadius: 8,
-    cursor: "pointer",
-    fontSize: 14,
-    fontWeight: 600,
-    transition: "opacity .2s",
+  storeBadgeLink: {
+    display: "inline-block"
+  },
+  storeBadgeImage: {
     height: 40
   },
   creatorsSection: {
@@ -500,20 +507,28 @@ const formatTitle = (title) =>
   ));
 
 const LandingPage = () => {
+  const slidesToRender = FEATURED_SLIDES.length > 0 ? FEATURED_SLIDES : slides;
+  const totalSlides = slidesToRender.length || 1;
+
   const [index, setIndex] = useState(0);
   const [modalType, setModalType] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [authMessage, setAuthMessage] = useState("");
   const [authMessageType, setAuthMessageType] = useState("info");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [profileDefaults, setProfileDefaults] = useState(null);
 
   const resetAuthFields = () => {
     setEmail("");
     setPassword("");
     setConfirmPassword("");
+    setUsername("");
+    setDisplayName("");
     setAuthMessage("");
     setAuthMessageType("info");
   };
@@ -552,10 +567,18 @@ const LandingPage = () => {
       return;
     }
 
-    if (isSignUp && password !== confirmPassword) {
-      setAuthMessage("Passwords must match.");
-      setAuthMessageType("error");
-      return;
+    if (isSignUp) {
+      if (password !== confirmPassword) {
+        setAuthMessage("Passwords must match.");
+        setAuthMessageType("error");
+        return;
+      }
+
+      if (!username.trim()) {
+        setAuthMessage("Username is required.");
+        setAuthMessageType("error");
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -564,28 +587,57 @@ const LandingPage = () => {
     try {
       const action = isSignIn ? signIn : signUp;
       const response = await action(email, password);
-      setAuthMessage(
-        isSignIn
-          ? "Signed in successfully."
-          : "Check your inbox for a confirmation email."
-      );
-      setAuthMessageType("success");
-      if (response?.access_token) {
-        storeAuthTokens(response.access_token, response.refresh_token ?? "");
-      }
       if (isSignIn) {
-        setAuthFlag(true);
-        navigate("/", { replace: true });
-      } else {
-        if (!response?.access_token) {
-          setAuthMessage("Please confirm your email before continuing.");
-          setAuthMessageType("error");
-          return;
+        if (response?.access_token) {
+          storeAuthTokens(response.access_token, response.refresh_token ?? "");
+          setAuthFlag(true);
         }
-        storeAuthTokens(response.access_token, response.refresh_token ?? "");
-        setModalType("");
-        setShowProfileSetup(true);
+        setAuthMessage("Signed in successfully.");
+        setAuthMessageType("success");
+        navigate("/", { replace: true });
+        return;
       }
+
+      if (!response?.access_token) {
+        setAuthMessage("Please confirm your email before continuing.");
+        setAuthMessageType("error");
+        return;
+      }
+
+      storeAuthTokens(response.access_token, response.refresh_token ?? "");
+
+      const trimmedUsername = username.trim();
+      const trimmedFullName = displayName.trim();
+
+      try {
+        await completeProfile({
+          username: trimmedUsername,
+          fullName: trimmedFullName,
+          avatarUrl: "",
+          bannerUrl: "",
+          bio: ""
+        });
+        setProfileDefaults({
+          username: trimmedUsername,
+          fullName: trimmedFullName,
+          avatarUrl: "",
+          bannerUrl: "",
+          bio: ""
+        });
+      } catch (profileError) {
+        setAuthMessage(
+          profileError?.response?.data ??
+          profileError?.message ??
+          "Failed to save username."
+        );
+        setAuthMessageType("error");
+        return;
+      }
+
+      setAuthMessage("Check your inbox for a confirmation email.");
+      setAuthMessageType("success");
+      setModalType("");
+      setShowProfileSetup(true);
     } catch (error) {
       setAuthMessage(authErrorMessage(error));
       setAuthMessageType("error");
@@ -594,11 +646,57 @@ const LandingPage = () => {
     }
   };
 
-  const goTo = useCallback((i) => setIndex(i), []);
-  const next = useCallback(() => setIndex(i => (i + 1) % slides.length), []);
-  const prev = useCallback(() => setIndex(i => (i - 1 + slides.length) % slides.length), []);
+  const shouldSkipSignup = (label = "") => {
+    const normalized = label?.toString().trim().toLowerCase();
+    if (!normalized) {
+      return false;
+    }
+    return CTA_EXCLUSIONS.has(normalized);
+  };
 
-  const active = slides[index];
+  const triggerSignupModal = (label = "") => {
+    if (!shouldSkipSignup(label)) {
+      openModal("signup");
+    }
+  };
+
+  const requireSignInForSearch = () => {
+    openModal("signin");
+    setAuthMessage("Sign in to search the catalog.");
+    setAuthMessageType("info");
+  };
+
+  const handleLandingSearchIntent = (event) => {
+    if (event?.preventDefault) {
+      event.preventDefault();
+    }
+    requireSignInForSearch();
+    if (event?.currentTarget?.blur) {
+      event.currentTarget.blur();
+    }
+  };
+
+  const handleLandingSearchKeyDown = (event) => {
+    if (event.key === "Tab" || event.key === "Shift") {
+      return;
+    }
+    handleLandingSearchIntent(event);
+  };
+
+  const goTo = useCallback((i) => {
+    setIndex(() => {
+      const normalized = ((i % totalSlides) + totalSlides) % totalSlides;
+      return normalized;
+    });
+  }, [totalSlides]);
+  const next = useCallback(() => {
+    setIndex((i) => (i + 1) % totalSlides);
+  }, [totalSlides]);
+  const prev = useCallback(() => {
+    setIndex((i) => (i - 1 + totalSlides) % totalSlides);
+  }, [totalSlides]);
+
+  const active = slidesToRender[index % totalSlides] ?? slidesToRender[0];
 
   React.useEffect(() => {
     document.body.style.background = "#0f0f0f";
@@ -610,7 +708,7 @@ const LandingPage = () => {
       {/* <Header /> */}
       <div
         className="hello-carousel"
-        style={styles.carousel(active.image)}
+        style={styles.carousel(active?.image ?? slidesToRender[0]?.image ?? slideImg1)}
         role="region"
         aria-label="Музыкальная карусель"
       >
@@ -628,8 +726,8 @@ const LandingPage = () => {
         {/* левый контент */}
         <div style={styles.left}>
           <div style={styles.content}>
-            <h1 style={styles.h1}>{formatTitle(active.title)}</h1>
-            <p style={styles.text}>{active.text}</p>
+            <h1 style={styles.h1}>{formatTitle(active?.title ?? "")}</h1>
+            <p style={styles.text}>{active?.text ?? ""}</p>
             <div style={{
               display: "flex",
               gap: 8,
@@ -637,25 +735,41 @@ const LandingPage = () => {
               alignItems: "center",
               justifyContent: "flex-start"
             }}>
-              <button style={styles.cta}>{active.cta}</button>
-              {active.ctaa && <button style={styles.ctaSecondary}>{active.ctaa}</button>}
+              {active?.cta && (
+                <button
+                  type="button"
+                  style={styles.cta}
+                  onClick={() => triggerSignupModal(active.cta)}
+                >
+                  {active.cta}
+                </button>
+              )}
+              {active?.ctaa && (
+                <button
+                  type="button"
+                  style={styles.ctaSecondary}
+                  onClick={() => triggerSignupModal(active.ctaa)}
+                >
+                  {active.ctaa}
+                </button>
+              )}
             </div>
           </div>
         </div>
         {/* блок артиста */}
         <div style={styles.artistWrap}>
-          <div style={{ fontSize: 14 }}>{active.artist}</div>
-          <div style={{ fontSize: 12, opacity: 0.85 }}>{active.subtitle}</div>
+          <div style={{ fontSize: 14 }}>{active?.artist}</div>
+          <div style={{ fontSize: 12, opacity: 0.85 }}>{active?.subtitle}</div>
         </div>
         {/* точки */}
         <div style={styles.dots} aria-label="Индикаторы слайдов">
-          {slides.map(s => (
+          {slidesToRender.map((slide, slideIndex) => (
             <button
-              key={s.id}
-              onClick={() => goTo(s.id)}
-              style={styles.dot(index === s.id)}
-              aria-label={`Слайд ${s.id + 1}`}
-              aria-current={index === s.id}
+              key={slide.id ?? slideIndex}
+              onClick={() => goTo(slideIndex)}
+              style={styles.dot(index === slideIndex)}
+              aria-label={`Слайд ${slideIndex + 1}`}
+              aria-current={index === slideIndex}
             />
           ))}
         </div>
@@ -667,13 +781,29 @@ const LandingPage = () => {
           <input
             type="text"
             placeholder="Search for artists, bands, tracks, podcasts"
+            aria-label="Search the SoundCloud catalog"
             style={styles.searchInput}
+            readOnly
+            onClick={handleLandingSearchIntent}
+            onKeyDown={handleLandingSearchKeyDown}
           />
           <span style={styles.orText}>or</span>
-          <button style={styles.uploadBtn}>Upload your own</button>
+          <button
+            type="button"
+            style={styles.uploadBtn}
+            onClick={() => triggerSignupModal("Upload your own")}
+          >
+            Upload your own
+          </button>
         </div>
         <h2 style={styles.trendingTitle}>Hear what's trending for free in the SoundCloud community</h2>
-        <button style={styles.trendingBtn}>Explore trending playlists</button>
+        <button
+          type="button"
+          style={styles.trendingBtn}
+          onClick={() => triggerSignupModal("Explore trending playlists")}
+        >
+          Explore trending playlists
+        </button>
       </div>
       
       <div style={styles.neverStopSection}>
@@ -682,8 +812,30 @@ const LandingPage = () => {
           <div style={styles.neverStopTitleUnderline}></div>
           <p style={styles.neverStopText}>SoundCloud is available on Web, iOS, Android, Sonos, Chromecast, and Xbox One.</p>
           <div style={styles.appStoreButtons}>
-            <button style={styles.appStoreBtn}>Download on the App Store</button>
-            <button style={styles.appStoreBtn}>GET IT ON Google Play</button>
+            <a
+              href="https://apps.apple.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={styles.storeBadgeLink}
+            >
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/6/67/App_Store_%28iOS%29.svg"
+                alt="App Store"
+                style={styles.storeBadgeImage}
+              />
+            </a>
+            <a
+              href="https://play.google.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={styles.storeBadgeLink}
+            >
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
+                alt="Google Play"
+                style={styles.storeBadgeImage}
+              />
+            </a>
           </div>
         </div>
       </div>
@@ -693,13 +845,25 @@ const LandingPage = () => {
         <div style={styles.creatorsContent}>
           <h2 style={styles.creatorsTitle}>Calling all creators</h2>
           <p style={styles.creatorsText}>Get on SoundCloud to connect with fans, share your sounds, and grow your audience. What are you waiting for?</p>
-          <button style={styles.creatorsBtn}>Find out more</button>
+          <button
+            type="button"
+            style={styles.creatorsBtn}
+            onClick={() => triggerSignupModal("Find out more")}
+          >
+            Find out more
+          </button>
         </div>
       </div>
       <div style={styles.joinSection}>
         <h2 style={styles.joinTitle}>Thanks for listening. Now join in.</h2>
         <p style={styles.joinSubtitle}>Save tracks, follow artists and build playlists. All for free.</p>
-        <button style={styles.joinCreateBtn} onClick={() => openModal("signup")}>Create account</button>
+        <button
+          type="button"
+          style={styles.joinCreateBtn}
+          onClick={() => triggerSignupModal("Create account")}
+        >
+          Create account
+        </button>
         <div style={styles.joinLinks}>
           <span>Already have an account?</span>
           <button style={styles.joinSignIn} onClick={() => openModal("signin")}>Sign in</button>
@@ -742,6 +906,26 @@ const LandingPage = () => {
                 style={styles.inputField}
                 autoComplete="email"
               />
+              {isSignUp && (
+                <>
+                  <input
+                    type="text"
+                    placeholder="Display name"
+                    value={displayName}
+                    onChange={(event) => setDisplayName(event.target.value)}
+                    style={styles.inputField}
+                    autoComplete="name"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Username (public handle)"
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                    style={styles.inputField}
+                    autoComplete="username"
+                  />
+                </>
+              )}
               <input
                 type="password"
                 placeholder="Password"
@@ -774,9 +958,14 @@ const LandingPage = () => {
       )}
       {showProfileSetup && (
         <ProfileSetupModal
-          onClose={() => setShowProfileSetup(false)}
+          initialValues={profileDefaults ?? undefined}
+          onClose={() => {
+            setShowProfileSetup(false);
+            setProfileDefaults(null);
+          }}
           onSuccess={() => {
             setShowProfileSetup(false);
+            setProfileDefaults(null);
             clearAuthTokens();
             setAuthFlag(false);
             setAuthMessage("Profile saved. Please confirm your email before signing in.");

@@ -82,6 +82,7 @@ export const unlikeTrack = async (trackId) => {
   });
 };
 
+
 export const followArtist = async (artistId) => {
   if (!artistId) {
     throw new Error("artistId must be provided");

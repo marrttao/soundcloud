@@ -5,16 +5,25 @@ import arrow_down from "../assets/icons/arrow_down.png";
 import bell from "../assets/icons/bell.png";
 import message from "../assets/icons/message.png";
 import { search } from "../api/search";
-import { useCurrentProfile } from "../context/ProfileContext";
+import { useCurrentProfile, clearProfileCache } from "../context/ProfileContext";
+import { clearAuthTokens, setAuthFlag } from "../utils/authFlag";
 // NOTE: This component must be rendered inside a <Router> (e.g., <BrowserRouter>) for NavLink to work.
+
+const sampleNotifications = [];
+
+const sampleAnnouncements = [];
 
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [messagesOpen, setMessagesOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const menuRef = useRef(null);
   const searchRef = useRef(null);
+  const notificationsRef = useRef(null);
+  const messagesRef = useRef(null);
   const { profile } = useCurrentProfile();
   const avatarUrl = profile?.avatar_url ?? null;
 
@@ -25,6 +34,12 @@ const Header = () => {
       }
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setSearchOpen(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+        setNotificationsOpen(false);
+      }
+      if (messagesRef.current && !messagesRef.current.contains(event.target)) {
+        setMessagesOpen(false);
       }
     };
 
@@ -52,7 +67,48 @@ const Header = () => {
     return () => clearTimeout(delaySearch);
   }, [searchQuery]);
 
-  const toggleMenu = () => setMenuOpen((open) => !open);
+  const toggleMenu = () => {
+    setMenuOpen((open) => {
+      const next = !open;
+      if (next) {
+        setNotificationsOpen(false);
+        setMessagesOpen(false);
+      }
+      return next;
+    });
+  };
+
+  const toggleNotifications = () => {
+    setNotificationsOpen((open) => {
+      const next = !open;
+      if (next) {
+        setMenuOpen(false);
+        setMessagesOpen(false);
+      }
+      return next;
+    });
+  };
+
+  const toggleMessages = () => {
+    setMessagesOpen((open) => {
+      const next = !open;
+      if (next) {
+        setMenuOpen(false);
+        setNotificationsOpen(false);
+      }
+      return next;
+    });
+  };
+
+  const handleLogout = () => {
+    setMenuOpen(false);
+    clearAuthTokens();
+    setAuthFlag(false);
+    clearProfileCache();
+    if (typeof window !== "undefined") {
+      window.location.assign("/");
+    }
+  };
 
   const profileRoutes = [
     { label: "Profile", to: "/profile" },
@@ -229,24 +285,29 @@ const Header = () => {
         {/* Right links */}
         <div className="header-actions" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           {[
-            { label: "Try Artist Pro", href: "#", primary: true },
-            { label: "For Artists", href: "#" }
-          ].map(({ label, href, primary }) => (
-            <a
+            { label: "Try Artist Pro", to: "/artist-pro", primary: true },
+            { label: "For Artists", to: "/for-artists" }
+          ].map(({ label, to, primary }) => (
+            <NavLink
               key={label}
-              href={href}
-              style={{
-                color: primary ? "#ff5500" : "#ccc",
+              to={to}
+              style={({ isActive }) => ({
+                color: isActive ? "#fff" : primary ? "#ff5500" : "#ccc",
                 fontWeight: primary ? "bold" : "normal",
                 textDecoration: "none",
                 transition: "color 0.2s",
-                cursor: "pointer"
-              }}
+                cursor: "pointer",
+                paddingBottom: "2px",
+                borderBottom: isActive ? "2px solid #ff5500" : "2px solid transparent"
+              })}
               onMouseOver={(e) => (e.currentTarget.style.color = "#fff")}
-              onMouseOut={(e) => (e.currentTarget.style.color = primary ? "#ff5500" : "#ccc")}
+              onMouseOut={(e) => {
+                const isActive = e.currentTarget.getAttribute("aria-current") === "page";
+                e.currentTarget.style.color = isActive ? "#fff" : primary ? "#ff5500" : "#ccc";
+              }}
             >
               {label}
-            </a>
+            </NavLink>
           ))}
 
           <NavLink
@@ -272,7 +333,10 @@ const Header = () => {
 
         {/* Avatar and icons */}
         <div className="header-icons" style={{ display: "flex", alignItems: "center", gap: "12px", position: "relative" }} ref={menuRef}>
-          <div onClick={toggleMenu} style={{ display: "flex", alignItems: "center", gap: "4px", cursor: "pointer" }}>
+          <div
+            onClick={toggleMenu}
+            style={{ display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", position: "relative" }}
+          >
             {avatarUrl ? (
               <img
                 src={avatarUrl}
@@ -310,44 +374,139 @@ const Header = () => {
               onMouseOut={(e) => (e.currentTarget.style.filter = "invert(1) brightness(2)")}
             />
           </div>
-          <img
-            src={bell}
-            alt="Notifications"
-            style={{
-              width: 15,
-              height: 15,
-              filter: "invert(1) brightness(2)",
-              transition: "filter 0.2s",
-              cursor: "pointer"
-            }}
-            onMouseOver={(e) => (e.currentTarget.style.filter = "invert(1) brightness(3)")}
-            onMouseOut={(e) => (e.currentTarget.style.filter = "invert(1) brightness(2)")}
-          />
-          <img
-            src={message}
-            alt="Messages"
-            style={{
-              width: 15,
-              height: 15,
-              filter: "invert(1) brightness(2)",
-              transition: "filter 0.2s",
-              cursor: "pointer"
-            }}
-            onMouseOver={(e) => (e.currentTarget.style.filter = "invert(1) brightness(3)")}
-            onMouseOut={(e) => (e.currentTarget.style.filter = "invert(1) brightness(2)")}
-          />
-          <span
-            style={{
-              color: "#fff",
-              fontSize: 18,
-              transition: "color 0.2s",
-              cursor: "pointer"
-            }}
-            onMouseOver={(e) => (e.currentTarget.style.color = "#ff5500")}
-            onMouseOut={(e) => (e.currentTarget.style.color = "#fff")}
-          >
-            ⋮
-          </span>
+          <div ref={notificationsRef} style={{ position: "relative" }}>
+            <button
+              type="button"
+              onClick={toggleNotifications}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                border: "none",
+                background: "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer"
+              }}
+            >
+              <img
+                src={bell}
+                alt="Notifications"
+                style={{
+                  width: 16,
+                  height: 16,
+                  filter: notificationsOpen ? "invert(1) brightness(3)" : "invert(1) brightness(2)",
+                  transition: "filter 0.2s"
+                }}
+              />
+            </button>
+            {notificationsOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 40,
+                  right: 0,
+                  width: 320,
+                  background: "#121212",
+                  border: "1px solid #2d2d2d",
+                  borderRadius: 12,
+                  boxShadow: "0 12px 32px rgba(0,0,0,0.45)",
+                  padding: 12,
+                  zIndex: 3000
+                }}
+              >
+                <div style={{ color: "#fff", fontWeight: 600, fontSize: 15, marginBottom: 8 }}>Notifications</div>
+                {sampleNotifications.length === 0 ? (
+                  <div style={{ color: "#888", fontSize: 13 }}>Nothing here yet</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {sampleNotifications.map((item) => (
+                      <div
+                        key={item.id}
+                        style={{
+                          background: "#1a1a1a",
+                          borderRadius: 10,
+                          padding: 10,
+                          border: "1px solid #222"
+                        }}
+                      >
+                        <div style={{ color: "#fff", fontSize: 14, fontWeight: 600 }}>{item.title}</div>
+                        <div style={{ color: "#aaa", fontSize: 12 }}>{item.body}</div>
+                        <div style={{ color: "#666", fontSize: 11, marginTop: 4 }}>{item.time} ago</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div ref={messagesRef} style={{ position: "relative" }}>
+            <button
+              type="button"
+              onClick={toggleMessages}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                border: "none",
+                background: "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer"
+              }}
+            >
+              <img
+                src={message}
+                alt="Announcements"
+                style={{
+                  width: 16,
+                  height: 16,
+                  filter: messagesOpen ? "invert(1) brightness(3)" : "invert(1) brightness(2)",
+                  transition: "filter 0.2s"
+                }}
+              />
+            </button>
+            {messagesOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 40,
+                  right: 0,
+                  width: 320,
+                  background: "#121212",
+                  border: "1px solid #2d2d2d",
+                  borderRadius: 12,
+                  boxShadow: "0 12px 32px rgba(0,0,0,0.45)",
+                  padding: 12,
+                  zIndex: 3000
+                }}
+              >
+                <div style={{ color: "#fff", fontWeight: 600, fontSize: 15, marginBottom: 8 }}>News</div>
+                {sampleAnnouncements.length === 0 ? (
+                  <div style={{ color: "#888", fontSize: 13 }}>Nothing here yet</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {sampleAnnouncements.map((item) => (
+                      <div
+                        key={item.id}
+                        style={{
+                          background: "#171717",
+                          borderRadius: 10,
+                          padding: 10,
+                          border: "1px solid #272727"
+                        }}
+                      >
+                        <div style={{ color: "#ff7a18", fontSize: 13, fontWeight: 600 }}>{item.title}</div>
+                        <div style={{ color: "#ddd", fontSize: 12 }}>{item.body}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {menuOpen && (
             <div
@@ -359,9 +518,12 @@ const Header = () => {
                 border: "1px solid #2d2d2d",
                 borderRadius: 10,
                 padding: "12px",
-                minWidth: 160,
+                minWidth: 180,
                 boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
-                zIndex: 3000
+                zIndex: 3000,
+                display: "flex",
+                flexDirection: "column",
+                gap: 4
               }}
             >
               {profileRoutes.map((item) => (
@@ -383,6 +545,30 @@ const Header = () => {
                   {item.label}
                 </NavLink>
               ))}
+              <div style={{ height: 1, background: "#1f1f1f", margin: "4px 0" }} />
+              <button
+                type="button"
+                onClick={handleLogout}
+                style={{
+                  border: "none",
+                  background: "#1d1d1d",
+                  color: "#ff8a8a",
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  padding: "8px 10px",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  fontSize: 14
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = "#2a2a2a";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = "#1d1d1d";
+                }}
+              >
+                Log out
+              </button>
             </div>
           )}
         </div>

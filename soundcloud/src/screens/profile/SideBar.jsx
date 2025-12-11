@@ -4,6 +4,7 @@ import { usePlayer } from "../../context/PlayerContext";
 
 const PEOPLE_ICON = "\u{1F465}\uFE0E";
 const MUSIC_NOTE_ICON = "\u{1F3B5}\uFE0E";
+const METRIC_ICON_COLOR = "#fff";
 
 const formatCount = (value = 0) =>
   value >= 1000 ? `${(value / 1000).toFixed(1).replace(/\.0$/, "")}K` : value.toString();
@@ -184,11 +185,11 @@ const SideBar = ({ stats, likes, following, loading, profileRouteBase = "/profil
                   </div>
                   <div style={{ display: "flex", gap: 12, color: "#bbb", fontSize: 12, marginTop: 2 }}>
                     <span>
-                      <span style={{ marginRight: 4, color: "#bbb" }}>{PEOPLE_ICON}</span>
+                      <span style={{ marginRight: 4, color: METRIC_ICON_COLOR }}>{PEOPLE_ICON}</span>
                       {formatCount(person.followers)}
                     </span>
                     <span>
-                      <span style={{ marginRight: 4, color: "#bbb" }}>{MUSIC_NOTE_ICON}</span>
+                      <span style={{ marginRight: 4, color: METRIC_ICON_COLOR }}>{MUSIC_NOTE_ICON}</span>
                       {formatCount(person.tracks)}
                     </span>
                   </div>

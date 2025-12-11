@@ -9,6 +9,8 @@ import NotFound from "./components/404.jsx";
 import TrackPage from "./screens/track/TrackPage.jsx";
 import PlaylistPage from "./screens/playlist/PlaylistPage.jsx";
 import Library from "./screens/main/Library.jsx";
+import TryArtistPro from "./screens/info/TryArtistPro.jsx";
+import ForArtists from "./screens/info/ForArtists.jsx";
 import { readAuthFlag } from "./utils/authFlag";
 
 const App = () => {
@@ -38,6 +40,8 @@ const App = () => {
       <Route path="/upload" element={isAuthenticated ? <Upload /> : <LandingPage />} />
       <Route path="/tracks/:trackId" element={isAuthenticated ? <TrackPage /> : <LandingPage />} />
       <Route path="/playlists/:playlistId" element={isAuthenticated ? <PlaylistPage /> : <LandingPage />} />
+      <Route path="/artist-pro" element={isAuthenticated ? <TryArtistPro /> : <LandingPage />} />
+      <Route path="/for-artists" element={isAuthenticated ? <ForArtists /> : <LandingPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

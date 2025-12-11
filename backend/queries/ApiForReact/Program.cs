@@ -132,6 +132,31 @@ namespace queries.ApiForReact
                 }
             });
 
+            app.MapGet("/profile/check-username", async (string username, HttpRequest httpRequest, SupabaseService supabase) =>
+            {
+                if (string.IsNullOrWhiteSpace(username))
+                {
+                    return Results.BadRequest("Username is required.");
+                }
+
+                var normalized = username.Trim();
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                var existing = await supabase.GetProfileByUsernameAsync(normalized, token);
+                var available = existing == null || existing.Id == user.Id;
+                return Results.Ok(new { available });
+            });
+
             app.MapGet("/profile/{username}", async (string username, HttpRequest httpRequest, ProfileService profileService, SupabaseService supabase) =>
             {
                 var token = ExtractBearerToken(httpRequest);
@@ -579,6 +604,7 @@ namespace queries.ApiForReact
                     return Results.StatusCode((int)status);
                 }
             });
+
 
             app.MapPost("/profiles/{artistId:guid}/follow", async (Guid artistId, HttpRequest httpRequest, SupabaseService supabase) =>
             {

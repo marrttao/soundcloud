@@ -6,6 +6,8 @@ import Profile from "./screens/profile/Profile.jsx";
 import NotFound from "./components/404.jsx";
 import PlaylistPage from "./screens/playlist/PlaylistPage.jsx";
 import Library from "./screens/main/Library.jsx";
+import TryArtistPro from "./screens/info/TryArtistPro.jsx";
+import ForArtists from "./screens/info/ForArtists.jsx";
 
 const App = () => (
   <Routes>
@@ -15,6 +17,8 @@ const App = () => (
     <Route path="/profile/:username" element={<Profile />} />
     <Route path="/feed" element={<FeedPage />} />
     <Route path="/playlists/:playlistId" element={<PlaylistPage />} />
+    <Route path="/artist-pro" element={<TryArtistPro />} />
+    <Route path="/for-artists" element={<ForArtists />} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );

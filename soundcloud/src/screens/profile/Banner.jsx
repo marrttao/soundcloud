@@ -8,7 +8,16 @@ const navItems = [
   { label: "Playlists", tab: "playlists" }
 ];
 
-const Banner = ({ profile, loading, onEdit = () => {}, isOwnProfile = false, activeTab = "all" }) => {
+const Banner = ({
+  profile,
+  loading,
+  onEdit = () => {},
+  isOwnProfile = false,
+  activeTab = "all",
+  onToggleFollow = () => {},
+  followBusy = false,
+  isFollowing = false
+}) => {
   const avatarUrl = profile?.avatar_url ?? "https://i.imgur.com/6unG5jv.png";
   const name = profile?.full_name ?? profile?.username ?? "Creator";
   const subtitle = profile?.bio ?? "Share your sound with the world.";
@@ -47,6 +56,8 @@ const Banner = ({ profile, loading, onEdit = () => {}, isOwnProfile = false, act
     : {
         background: "linear-gradient(90deg, #a7a17b 0%, #d6d6af 100%)"
       };
+  const canFollow = !isOwnProfile && Boolean(profile?.id);
+  const followLabel = isFollowing ? "Following" : "Follow";
 
   return (
     <>
@@ -82,12 +93,16 @@ const Banner = ({ profile, loading, onEdit = () => {}, isOwnProfile = false, act
                 margin: 0,
                 fontSize: 32,
                 fontWeight: 700,
-                color: "#101010",
-                background: "#000",
-                display: "inline-block",
-                padding: "4px 12px"
+                color: "#fff",
+                textShadow: "0 6px 18px rgba(0,0,0,0.35)",
+                letterSpacing: 0.3
               }}>{loading ? "Loading profile" : name}</h1>
-              <p style={{ margin: "8px 0 0", color: "#101010", fontWeight: 500 }}>{subtitle}</p>
+              <p style={{
+                margin: "8px 0 0",
+                color: "#fff",
+                fontWeight: 500,
+                textShadow: "0 6px 18px rgba(0,0,0,0.35)"
+              }}>{subtitle}</p>
             </div>
           </div>
           {isOwnProfile && (
@@ -133,25 +148,28 @@ const Banner = ({ profile, loading, onEdit = () => {}, isOwnProfile = false, act
             </NavLink>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 12 }}>
-          <button style={{
-            background: "#181818",
-            color: "#fff",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 6,
-            padding: "8px 16px",
-            fontWeight: 600,
-            cursor: "pointer"
-          }}>Share</button>
-          <button style={{
-            background: "#181818",
-            color: "#fff",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 6,
-            padding: "8px 16px",
-            fontWeight: 600,
-            cursor: "pointer"
-          }}>Edit</button>
+        <div>
+          {canFollow && (
+            <button
+              type="button"
+              onClick={onToggleFollow}
+              disabled={followBusy}
+              style={{
+                background: isFollowing ? "#1d1d1d" : "transparent",
+                color: "#fff",
+                border: "1px solid rgba(255,255,255,0.35)",
+                borderRadius: 999,
+                padding: "8px 22px",
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: followBusy ? "not-allowed" : "pointer",
+                opacity: followBusy ? 0.6 : 1,
+                letterSpacing: 0.2
+              }}
+            >
+              {followBusy ? "Updating" : followLabel}
+            </button>
+          )}
         </div>
       </div>
     </>

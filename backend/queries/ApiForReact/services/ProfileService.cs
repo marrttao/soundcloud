@@ -29,6 +29,8 @@ public class ProfileService
             return null;
         }
 
+        profile = profile with { IsFollowing = false };
+
         var trackRecords = await _supabase.GetTracksAsync(user.Id, accessToken);
         var playlists = await _supabase.GetPlaylistsAsync(user.Id, user.Id, accessToken);
         var likedPlaylists = await _supabase.GetLikedPlaylistsAsync(user.Id, accessToken);
@@ -132,6 +134,12 @@ public class ProfileService
         }
 
         var userId = profile.Id;
+
+        var viewerFollows = viewerId != Guid.Empty && viewerId != userId
+            ? await _supabase.IsFollowingAsync(viewerId, userId, accessToken)
+            : false;
+
+        profile = profile with { IsFollowing = viewerFollows };
 
         var trackRecords = await _supabase.GetTracksAsync(userId, accessToken);
         var likes = await _supabase.GetLikedTracksAsync(userId, accessToken);

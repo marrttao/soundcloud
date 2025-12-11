@@ -1,13 +1,55 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { fetchProfile } from "../api/profile";
 
+export const PROFILE_CACHE_KEY = "sc_profile_cache_v1";
+
+const readCachedProfile = () => {
+  if (typeof window === "undefined" || !window.sessionStorage) {
+    return null;
+  }
+  try {
+    const raw = window.sessionStorage.getItem(PROFILE_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    console.warn("Failed to read cached profile", err);
+    return null;
+  }
+};
+
+const writeCachedProfile = (payload) => {
+  if (typeof window === "undefined" || !window.sessionStorage) {
+    return;
+  }
+  try {
+    if (!payload) {
+      window.sessionStorage.removeItem(PROFILE_CACHE_KEY);
+      return;
+    }
+    window.sessionStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(payload));
+  } catch (err) {
+    console.warn("Failed to cache profile", err);
+  }
+};
+
+export const clearProfileCache = () => {
+  if (typeof window === "undefined" || !window.sessionStorage) {
+    return;
+  }
+  try {
+    window.sessionStorage.removeItem(PROFILE_CACHE_KEY);
+  } catch (err) {
+    console.warn("Failed to clear cached profile", err);
+  }
+};
+
 const ProfileContext = createContext(null);
 
 export const ProfileProvider = ({ children }) => {
-  const [profileData, setProfileData] = useState(null);
+  const initialCache = useMemo(() => readCachedProfile(), []);
+  const [profileData, setProfileData] = useState(initialCache);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(Boolean(initialCache));
   const activeRequestRef = useRef(null);
   const requestIdRef = useRef(0);
 
@@ -30,11 +72,14 @@ export const ProfileProvider = ({ children }) => {
     const requestPromise = (async () => {
       try {
         const response = await fetchProfile();
-        setProfileData(response ?? null);
-        return response ?? null;
+        const nextProfile = response ?? null;
+        setProfileData(nextProfile);
+        writeCachedProfile(nextProfile);
+        return nextProfile;
       } catch (err) {
         console.error("Failed to load current profile", err);
         setProfileData(null);
+        clearProfileCache();
         setError(err?.message ?? "Unable to load profile.");
         throw err;
       } finally {
