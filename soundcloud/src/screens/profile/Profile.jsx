@@ -81,6 +81,7 @@ const Profile = () => {
   const tracks = profileData?.tracks ?? [];
   const playlists = profileData?.playlists ?? [];
   const likedTracks = profileData?.likes ?? [];
+  const likedPlaylists = profileData?.liked_playlists ?? [];
 
   const renderMainContent = () => {
     switch (activeTab) {
@@ -100,7 +101,19 @@ const Profile = () => {
           />
         );
       case "likes":
-        return <UserTracks tracks={likedTracks} loading={loading} title="Liked Tracks" />;
+        return (
+          <>
+            <UserTracks tracks={likedTracks} loading={loading} title="Liked Tracks" />
+            <UserPlaylists
+              playlists={likedPlaylists}
+              loading={loading}
+              title="Liked Playlists"
+              isOwnProfile={false}
+              emptyMessage="This user has not liked playlists yet."
+              onPlaylistClick={(playlistId) => navigate(`/playlists/${playlistId}`)}
+            />
+          </>
+        );
       case "following":
         return (
           <section

@@ -30,6 +30,9 @@ public record ProfileDto
     [JsonPropertyName("avatar_url")]
     public string? AvatarUrl { get; init; }
 
+    [JsonPropertyName("likes_count")]
+    public long LikesCount { get; init; }
+
     [JsonPropertyName("banner_url")]
     public string? BannerUrl { get; init; }
 
@@ -112,6 +115,9 @@ public record ProfileViewModel
     [JsonPropertyName("playlists")]
     public List<PlaylistSummary> Playlists { get; init; } = new();
 
+    [JsonPropertyName("liked_playlists")]
+    public List<PlaylistSummary> LikedPlaylists { get; init; } = new();
+
     [JsonPropertyName("following")]
     public List<SimpleProfile> Following { get; init; } = new();
 }
@@ -162,6 +168,12 @@ public record TrackLikeRecord
 {
     [JsonPropertyName("track")]
     public TrackRecord Track { get; init; } = null!;
+}
+
+public record PlaylistLikeRecord
+{
+    [JsonPropertyName("playlist")]
+    public PlaylistRecord Playlist { get; init; } = null!;
 }
 
 public record ListeningHistoryRecord
@@ -302,6 +314,9 @@ public record PlaylistRecord
 
     [JsonPropertyName("updated_at")]
     public DateTimeOffset? UpdatedAt { get; init; }
+
+    [JsonPropertyName("likes_count")]
+    public long LikesCount { get; init; }
 }
 
 public record PlaylistSummary
@@ -314,6 +329,7 @@ public record PlaylistSummary
     public bool IsPrivate { get; init; }
     public int TrackCount { get; init; }
     public DateTimeOffset? CreatedAt { get; init; }
+    public long LikesCount { get; init; }
 }
 
 public record PlaylistTrackRecord
@@ -344,6 +360,9 @@ public record PlaylistDetailResponse
 
     [JsonPropertyName("isOwner")]
     public bool IsOwner { get; init; }
+
+    [JsonPropertyName("isLiked")]
+    public bool IsLiked { get; init; }
 }
 
 public record PlaylistCreateRequest

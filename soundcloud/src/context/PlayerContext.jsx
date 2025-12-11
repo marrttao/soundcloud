@@ -21,7 +21,8 @@ const initialState = {
   duration: 0,
   error: null,
   likeInFlight: false,
-  followInFlight: false
+  followInFlight: false,
+  volume: 1
 };
 
 const normalizeDescriptor = (candidate) => {
@@ -251,6 +252,15 @@ export const PlayerProvider = ({ children }) => {
     setPlayerState((prev) => ({ ...prev, progress: clamped }));
   }, [audio, setPlayerState]);
 
+  const setVolume = useCallback((nextVolume) => {
+    if (!Number.isFinite(nextVolume)) {
+      return;
+    }
+    const clamped = Math.min(Math.max(nextVolume, 0), 1);
+    audio.volume = clamped;
+    setPlayerState((prev) => ({ ...prev, volume: clamped }));
+  }, [audio, setPlayerState]);
+
   const resolveNextIndex = useCallback((direction) => {
     const snapshot = stateRef.current;
     const { queue, currentIndex, shuffle, repeatMode } = snapshot;
@@ -447,6 +457,10 @@ export const PlayerProvider = ({ children }) => {
     };
   }, [audio, handleEnded, setPlayerState, updateProgress]);
 
+  useEffect(() => {
+    audio.volume = state.volume;
+  }, [audio, state.volume]);
+
   const value = useMemo(() => ({
     ...state,
     playTrack,
@@ -457,8 +471,9 @@ export const PlayerProvider = ({ children }) => {
     toggleShuffle,
     cycleRepeat,
     likeCurrentTrack,
-    followCurrentArtist
-  }), [state, playTrack, togglePlay, seek, next, previous, toggleShuffle, cycleRepeat, likeCurrentTrack, followCurrentArtist]);
+    followCurrentArtist,
+    setVolume
+  }), [state, playTrack, togglePlay, seek, next, previous, toggleShuffle, cycleRepeat, likeCurrentTrack, followCurrentArtist, setVolume]);
 
   return (
     <PlayerContext.Provider value={value}>

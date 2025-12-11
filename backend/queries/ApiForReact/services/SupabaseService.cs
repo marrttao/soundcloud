@@ -616,6 +616,83 @@ public class SupabaseService
         }
     }
 
+    public async Task<bool> IsPlaylistLikedAsync(Guid userId, string playlistId, string accessToken)
+    {
+        if (string.IsNullOrWhiteSpace(playlistId))
+        {
+            return false;
+        }
+
+        var encodedPlaylistId = Uri.EscapeDataString(playlistId);
+        return (await GetCountAsync($"/rest/v1/playlist_likes?select=playlist_id&user_id=eq.{userId}&playlist_id=eq.{encodedPlaylistId}", accessToken)) > 0;
+    }
+
+    public async Task LikePlaylistAsync(Guid userId, string playlistId, string accessToken, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(playlistId))
+        {
+            throw new HttpRequestException("Playlist id is required.", null, HttpStatusCode.BadRequest);
+        }
+
+        if (await IsPlaylistLikedAsync(userId, playlistId, accessToken))
+        {
+            return;
+        }
+
+        var payload = new[]
+        {
+            new Dictionary<string, object>
+            {
+                ["user_id"] = userId,
+                ["playlist_id"] = playlistId
+            }
+        };
+
+        var request = CreateAuthRequest(HttpMethod.Post, "/rest/v1/playlist_likes", payload, accessToken);
+        request.Headers.TryAddWithoutValidation("Prefer", "resolution=merge-duplicates,return=minimal");
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        if (response.IsSuccessStatusCode)
+        {
+            await UpdatePlaylistLikesCountAsync(playlistId, 1, cancellationToken);
+        }
+        else if (response.StatusCode != HttpStatusCode.Conflict)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new HttpRequestException(string.IsNullOrWhiteSpace(body) ? "Unable to like playlist." : body, null, response.StatusCode);
+        }
+    }
+
+    public async Task UnlikePlaylistAsync(Guid userId, string playlistId, string accessToken, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(playlistId))
+        {
+            throw new HttpRequestException("Playlist id is required.", null, HttpStatusCode.BadRequest);
+        }
+
+        if (!await IsPlaylistLikedAsync(userId, playlistId, accessToken))
+        {
+            return;
+        }
+
+        var encodedPlaylistId = Uri.EscapeDataString(playlistId);
+        var request = new HttpRequestMessage(HttpMethod.Delete, $"/rest/v1/playlist_likes?playlist_id=eq.{encodedPlaylistId}&user_id=eq.{userId}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        request.Headers.TryAddWithoutValidation("apikey", _key);
+        request.Headers.TryAddWithoutValidation("Prefer", "return=minimal");
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        if (response.IsSuccessStatusCode)
+        {
+            await UpdatePlaylistLikesCountAsync(playlistId, -1, cancellationToken);
+        }
+        else if (response.StatusCode != HttpStatusCode.NotFound)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new HttpRequestException(string.IsNullOrWhiteSpace(body) ? "Unable to unlike playlist." : body, null, response.StatusCode);
+        }
+    }
+
     public async Task FollowUserAsync(Guid followerId, Guid followingId, string accessToken, CancellationToken cancellationToken = default)
     {
         if (await IsFollowingAsync(followerId, followingId, accessToken))
@@ -684,7 +761,7 @@ public class SupabaseService
         }
 
         var effectiveLimit = limit > 0 ? limit : 20;
-        var path = $"/rest/v1/playlists?select=id,user_id,title,description,cover_url,is_private,created_at&user_id=in.({FormatInList(idList)})&is_private=is.false&order=created_at.desc&limit={effectiveLimit}";
+        var path = $"/rest/v1/playlists?select=id,user_id,title,description,cover_url,is_private,created_at,likes_count&user_id=in.({FormatInList(idList)})&is_private=is.false&order=created_at.desc&limit={effectiveLimit}";
 
         using var response = await _httpClient.SendAsync(CreateAuthRequest(HttpMethod.Get, path, null, accessToken), cancellationToken);
         if (!response.IsSuccessStatusCode)
@@ -709,14 +786,15 @@ public class SupabaseService
             CoverUrl = record.CoverUrl,
             IsPrivate = record.IsPrivate ?? false,
             TrackCount = counts.TryGetValue(record.Id, out var count) ? count : 0,
-            CreatedAt = record.CreatedAt
+            CreatedAt = record.CreatedAt,
+            LikesCount = record.LikesCount
         }).ToList();
     }
 
     public async Task<List<PlaylistSummary>> GetPlaylistsAsync(Guid ownerId, Guid viewerId, string accessToken, CancellationToken cancellationToken = default)
     {
         var filter = ownerId == viewerId ? string.Empty : "&is_private=is.false";
-        var path = $"/rest/v1/playlists?select=id,user_id,title,description,cover_url,is_private,created_at&user_id=eq.{ownerId}{filter}&order=created_at.desc";
+        var path = $"/rest/v1/playlists?select=id,user_id,title,description,cover_url,is_private,created_at,likes_count&user_id=eq.{ownerId}{filter}&order=created_at.desc";
         using var response = await _httpClient.SendAsync(CreateAuthRequest(HttpMethod.Get, path, null, accessToken), cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
@@ -740,7 +818,50 @@ public class SupabaseService
             CoverUrl = record.CoverUrl,
             IsPrivate = record.IsPrivate ?? false,
             TrackCount = counts.TryGetValue(record.Id, out var count) ? count : 0,
-            CreatedAt = record.CreatedAt
+            CreatedAt = record.CreatedAt,
+            LikesCount = record.LikesCount
+        }).ToList();
+    }
+
+    public async Task<List<PlaylistSummary>> GetLikedPlaylistsAsync(Guid userId, string accessToken, CancellationToken cancellationToken = default)
+    {
+        var path = $"/rest/v1/playlist_likes?select=playlist:playlists(id,user_id,title,description,cover_url,is_private,created_at,likes_count)&user_id=eq.{userId}&order=created_at.desc";
+        using var response = await _httpClient.SendAsync(CreateAuthRequest(HttpMethod.Get, path, null, accessToken), cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return new List<PlaylistSummary>();
+        }
+
+        var liked = await response.Content.ReadFromJsonAsync<List<PlaylistLikeRecord>>(_jsonOptions, cancellationToken) ?? new List<PlaylistLikeRecord>();
+        if (!liked.Any())
+        {
+            return new List<PlaylistSummary>();
+        }
+
+        var playlistRecords = liked
+            .Select(record => record.Playlist)
+            .Where(record => record != null)
+            .Where(record => record.IsPrivate != true || record.UserId == userId)
+            .ToList();
+
+        if (!playlistRecords.Any())
+        {
+            return new List<PlaylistSummary>();
+        }
+
+        var counts = await GetPlaylistTrackCountsAsync(playlistRecords.Select(record => record.Id), cancellationToken);
+
+        return playlistRecords.Select(record => new PlaylistSummary
+        {
+            Id = record.Id,
+            UserId = record.UserId,
+            Title = record.Title,
+            Description = record.Description,
+            CoverUrl = record.CoverUrl,
+            IsPrivate = record.IsPrivate ?? false,
+            TrackCount = counts.TryGetValue(record.Id, out var count) ? count : 0,
+            CreatedAt = record.CreatedAt,
+            LikesCount = record.LikesCount
         }).ToList();
     }
 
@@ -820,15 +941,19 @@ public class SupabaseService
             CoverUrl = playlist.CoverUrl,
             IsPrivate = playlist.IsPrivate ?? false,
             TrackCount = trackSummaries.Count,
-            CreatedAt = playlist.CreatedAt
+            CreatedAt = playlist.CreatedAt,
+            LikesCount = playlist.LikesCount
         };
+
+        var isLiked = await IsPlaylistLikedAsync(viewerId, playlist.Id, accessToken);
 
         return new PlaylistDetailResponse
         {
             Playlist = summary,
             Owner = ownerProfile,
             Tracks = trackSummaries,
-            IsOwner = playlist.UserId == viewerId
+            IsOwner = playlist.UserId == viewerId,
+            IsLiked = isLiked
         };
     }
 
@@ -896,7 +1021,8 @@ public class SupabaseService
             CoverUrl = record.CoverUrl ?? coverToUse,
             IsPrivate = record.IsPrivate ?? false,
             TrackCount = 1,
-            CreatedAt = record.CreatedAt
+            CreatedAt = record.CreatedAt,
+            LikesCount = 0
         };
     }
 
@@ -970,7 +1096,8 @@ public class SupabaseService
             CoverUrl = record.CoverUrl,
             IsPrivate = record.IsPrivate ?? false,
             TrackCount = count,
-            CreatedAt = record.CreatedAt
+            CreatedAt = record.CreatedAt,
+            LikesCount = record.LikesCount
         };
     }
 
@@ -1022,7 +1149,7 @@ public class SupabaseService
     private async Task<PlaylistRecord?> GetPlaylistRecordAsync(string playlistId, string bearer, string mode, CancellationToken cancellationToken)
     {
         var encodedPlaylistId = Uri.EscapeDataString(playlistId);
-        var path = $"/rest/v1/playlists?select=id,user_id,title,description,cover_url,is_private,created_at&id=eq.{encodedPlaylistId}&limit=1";
+        var path = $"/rest/v1/playlists?select=id,user_id,title,description,cover_url,is_private,created_at,likes_count&id=eq.{encodedPlaylistId}&limit=1";
         using var response = await _httpClient.SendAsync(CreateAuthRequest(HttpMethod.Get, path, null, bearer), cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -1115,6 +1242,7 @@ public class SupabaseService
     }
 
     private sealed record TrackLikesCounter([property: JsonPropertyName("likes_count")] int LikesCount);
+    private sealed record PlaylistLikesCounter([property: JsonPropertyName("likes_count")] int LikesCount);
 
     private sealed class FlexibleStringConverter : JsonConverter<string>
     {
@@ -1195,6 +1323,43 @@ public class SupabaseService
         catch (Exception ex)
         {
             Console.WriteLine($"[WARN] Exception while updating likes_count for track {trackId}: {ex.Message}");
+        }
+    }
+
+    private async Task UpdatePlaylistLikesCountAsync(string playlistId, int delta, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var encodedPlaylistId = Uri.EscapeDataString(playlistId);
+            var getRequest = CreateAuthRequest(HttpMethod.Get, $"/rest/v1/playlists?select=likes_count&id=eq.{encodedPlaylistId}&limit=1");
+            using var getResponse = await _httpClient.SendAsync(getRequest, cancellationToken);
+            if (!getResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var counters = await getResponse.Content.ReadFromJsonAsync<List<PlaylistLikesCounter>>(_jsonOptions, cancellationToken);
+            var current = counters?.FirstOrDefault()?.LikesCount ?? 0;
+            var updated = Math.Max(0, current + delta);
+
+            var payload = new Dictionary<string, object?>
+            {
+                ["likes_count"] = updated
+            };
+
+            var patchRequest = CreateAuthRequest(HttpMethod.Patch, $"/rest/v1/playlists?id=eq.{encodedPlaylistId}", payload);
+            patchRequest.Headers.TryAddWithoutValidation("Prefer", "return=minimal");
+
+            using var patchResponse = await _httpClient.SendAsync(patchRequest, cancellationToken);
+            if (!patchResponse.IsSuccessStatusCode)
+            {
+                var body = await patchResponse.Content.ReadAsStringAsync(cancellationToken);
+                Console.WriteLine($"[WARN] Failed to update likes_count for playlist {playlistId}: {patchResponse.StatusCode} {body}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[WARN] Exception while updating likes_count for playlist {playlistId}: {ex.Message}");
         }
     }
 

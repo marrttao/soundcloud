@@ -237,6 +237,42 @@ namespace queries.ApiForReact
                 return detail is { } ? Results.Ok(detail) : Results.NotFound();
             });
 
+            app.MapPost("/playlists/{playlistId}/like", async (string playlistId, HttpRequest httpRequest, SupabaseService supabase) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                await supabase.LikePlaylistAsync(user.Id, playlistId, token, httpRequest.HttpContext.RequestAborted);
+                return Results.Ok(new { liked = true });
+            });
+
+            app.MapDelete("/playlists/{playlistId}/like", async (string playlistId, HttpRequest httpRequest, SupabaseService supabase) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                await supabase.UnlikePlaylistAsync(user.Id, playlistId, token, httpRequest.HttpContext.RequestAborted);
+                return Results.Ok(new { liked = false });
+            });
+
             app.MapPost("/playlists/{playlistId}/tracks", async (string playlistId, PlaylistTrackAddRequest request, HttpRequest httpRequest, SupabaseService supabase) =>
             {
                 var token = ExtractBearerToken(httpRequest);

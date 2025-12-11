@@ -25,6 +25,12 @@ CREATE POLICY "allow_public_read_profiles" ON profiles
 -- Enable RLS and policies for playlists
 ALTER TABLE playlists ENABLE ROW LEVEL SECURITY;
 
+ALTER TABLE playlists
+  ADD COLUMN IF NOT EXISTS likes_count bigint NOT NULL DEFAULT 0;
+
+ALTER TABLE playlists
+  ALTER COLUMN likes_count SET DEFAULT 0;
+
 CREATE POLICY "allow_public_read_playlists" ON playlists
   FOR SELECT
   USING (auth.uid() = user_id OR is_private IS NOT TRUE);
@@ -96,3 +102,34 @@ CREATE POLICY "allow_owner_delete_playlist_tracks" ON playlist_tracks
         AND p.user_id = auth.uid()
     )
   );
+
+-- Enable RLS and policies for playlist_likes
+ALTER TABLE playlist_likes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "allow_visible_select_playlist_likes" ON playlist_likes
+  FOR SELECT
+  USING (
+    user_id = auth.uid()
+    OR EXISTS (
+      SELECT 1
+      FROM playlists p
+      WHERE p.id = playlist_likes.playlist_id
+        AND (p.user_id = auth.uid() OR p.is_private IS NOT TRUE)
+    )
+  );
+
+CREATE POLICY "allow_authenticated_insert_playlist_likes" ON playlist_likes
+  FOR INSERT
+  WITH CHECK (
+    user_id = auth.uid()
+    AND EXISTS (
+      SELECT 1
+      FROM playlists p
+      WHERE p.id = playlist_likes.playlist_id
+        AND (p.user_id = auth.uid() OR p.is_private IS NOT TRUE)
+    )
+  );
+
+CREATE POLICY "allow_owner_delete_playlist_likes" ON playlist_likes
+  FOR DELETE
+  USING (user_id = auth.uid());

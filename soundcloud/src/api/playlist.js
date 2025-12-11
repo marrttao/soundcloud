@@ -76,3 +76,19 @@ export const addTrackToPlaylist = async (playlistId, trackId) => {
     handleAuthFailure(error);
   }
 };
+
+export const likePlaylist = async (playlistId) => {
+  try {
+    await client.post(`/playlists/${playlistId}/like`, null, { headers: authHeaders() });
+  } catch (error) {
+    handleAuthFailure(error);
+  }
+};
+
+export const unlikePlaylist = async (playlistId) => {
+  try {
+    await client.delete(`/playlists/${playlistId}/like`, { headers: authHeaders() });
+  } catch (error) {
+    handleAuthFailure(error);
+  }
+};

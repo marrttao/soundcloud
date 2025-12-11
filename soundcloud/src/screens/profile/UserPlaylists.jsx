@@ -62,7 +62,8 @@ const UserPlaylists = ({
   title = "Playlists",
   isOwnProfile = false,
   onCreate,
-  onPlaylistClick
+  onPlaylistClick,
+  emptyMessage = "This user has not created playlists yet."
 }) => (
   <section
     style={{
@@ -154,7 +155,7 @@ const UserPlaylists = ({
         })}
       </div>
     ) : (
-      <div style={{ color: "#8c8c8c", fontSize: 14 }}>This user has not created playlists yet.</div>
+      <div style={{ color: "#8c8c8c", fontSize: 14 }}>{emptyMessage}</div>
     ))}
   </section>
 );

@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { updatePlaylist } from "../../api/playlist";
+import { updatePlaylist, fetchPlaylistDetail, likePlaylist, unlikePlaylist } from "../../api/playlist";
 import { fetchProfile } from "../../api/profile";
 import Header from "../../components/Header.jsx";
 import Footer from "../../components/Footer.jsx";
-import { fetchPlaylistDetail } from "../../api/playlist";
 import { usePlayer } from "../../context/PlayerContext";
 
 const FALLBACK_PLAYLIST_COVER = "https://i.imgur.com/6unG5jv.png";
@@ -94,6 +93,8 @@ const PlaylistPage = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editPayload, setEditPayload] = useState({ title: "", description: "", isPrivate: false });
   const [isOwner, setIsOwner] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
 
   const { playTrack, currentTrack, togglePlay, isPlaying } = usePlayer();
 
@@ -138,11 +139,15 @@ const PlaylistPage = () => {
             });
           }
           setIsOwner(Boolean(detail?.isOwner));
+          setIsLiked(Boolean(detail?.isLiked));
+          setLikesCount(summary?.likesCount ?? 0);
         }
       } catch (err) {
         console.error("Failed to fetch playlist", err);
         if (!cancelled) {
           setError(err?.response?.data ?? err?.message ?? "Unable to load playlist");
+          setIsLiked(false);
+          setLikesCount(0);
         }
       } finally {
         if (!cancelled) {
@@ -328,6 +333,32 @@ const PlaylistPage = () => {
     }
   };
 
+  const handleTogglePlaylistLike = async () => {
+    if (!playlistId) {
+      return;
+    }
+
+    setActionError("");
+    setActionMessage("");
+
+    try {
+      if (isLiked) {
+        await unlikePlaylist(playlistId);
+        setIsLiked(false);
+        setLikesCount((prev) => Math.max(0, prev - 1));
+        setActionMessage("Playlist removed from your likes.");
+      } else {
+        await likePlaylist(playlistId);
+        setIsLiked(true);
+        setLikesCount((prev) => prev + 1);
+        setActionMessage("Playlist added to your likes.");
+      }
+    } catch (err) {
+      console.error("Failed to toggle playlist like", err);
+      setActionError(err?.message ?? "Unable to update playlist like state.");
+    }
+  };
+
   return (
     <div style={{
       minHeight: "100vh",
@@ -369,6 +400,12 @@ const PlaylistPage = () => {
                       <span>{playlist.trackCount ?? tracks.length} tracks</span>
                       <span>•</span>
                       <span>{formatRuntime(totalDurationSeconds)}</span>
+                      {Number.isFinite(likesCount) && (
+                        <>
+                          <span>•</span>
+                          <span>{formatCount(likesCount)} likes</span>
+                        </>
+                      )}
                       {updatedLabel && (
                         <>
                           <span>•</span>
@@ -417,6 +454,25 @@ const PlaylistPage = () => {
                       }}
                     >
                       {isPlaylistPlaying ? "Pause" : "Play"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleTogglePlaylistLike}
+                      style={{
+                        background: "transparent",
+                        color: isLiked ? "#ff7a45" : "#f5f5f5",
+                        border: "1px solid #2b2b2b",
+                        padding: "10px 18px",
+                        fontWeight: 600,
+                        letterSpacing: 0.4,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8
+                      }}
+                    >
+                      <span style={{ fontSize: 16 }}>{isLiked ? "♥" : "♡"}</span>
+                      <span style={{ fontSize: 14 }}>{formatCount(likesCount)}</span>
                     </button>
                     {isOwner && (
                       <button

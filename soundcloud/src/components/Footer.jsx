@@ -37,12 +37,16 @@ const Footer = () => {
         likeCurrentTrack,
         followCurrentArtist,
         likeInFlight,
-        followInFlight
+        followInFlight,
+        volume,
+        setVolume
     } = usePlayer();
 
     const [menuOpen, setMenuOpen] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [volumeOpen, setVolumeOpen] = useState(false);
     const menuRef = useRef(null);
+    const volumeRef = useRef(null);
 
     useEffect(() => {
         if (!menuOpen) {
@@ -69,6 +73,32 @@ const Footer = () => {
             document.removeEventListener("keydown", handleKeyDown);
         };
     }, [menuOpen]);
+
+    useEffect(() => {
+        if (!volumeOpen) {
+            return;
+        }
+
+        const handleClickOutside = (event) => {
+            if (volumeRef.current && !volumeRef.current.contains(event.target)) {
+                setVolumeOpen(false);
+            }
+        };
+
+        const handleKeyDown = (event) => {
+            if (event.key === "Escape") {
+                setVolumeOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [volumeOpen]);
 
     const hasTrack = Boolean(currentTrack);
     const progressSeconds = hasTrack ? Math.min(progress ?? 0, duration ?? 0) : 0;
@@ -122,6 +152,27 @@ const Footer = () => {
         setShowAddModal(true);
         setMenuOpen(false);
     };
+
+    useEffect(() => {
+        if (!hasTrack) {
+            setVolumeOpen(false);
+        }
+    }, [hasTrack]);
+
+    const handleVolumeChange = (event) => {
+        const value = Number(event.target.value);
+        if (Number.isFinite(value)) {
+            const normalized = Math.min(Math.max(1 - value, 0), 1);
+            setVolume(normalized);
+        }
+    };
+
+    const toggleVolumePanel = () => {
+        if (!hasTrack) return;
+        setVolumeOpen((prev) => !prev);
+    };
+
+    const volumePercent = Math.round((volume ?? 1) * 100);
 
     return (
         <footer
@@ -242,6 +293,65 @@ const Footer = () => {
                         </span>
                         <span style={{ color: "#ccc", fontSize: 12 }}>{artistName}</span>
                     </div>
+                </div>
+
+                <div style={{ position: "relative" }} ref={volumeRef}>
+                    <button
+                        type="button"
+                        onClick={toggleVolumePanel}
+                        disabled={!hasTrack}
+                        style={{
+                            background: "#242424",
+                            border: "1px solid #444",
+                            borderRadius: 999,
+                            padding: "6px 14px",
+                            color: "#fff",
+                            fontSize: 12,
+                            letterSpacing: 1,
+                            cursor: hasTrack ? "pointer" : "not-allowed",
+                            opacity: hasTrack ? 1 : 0.4
+                        }}
+                        aria-haspopup="true"
+                        aria-expanded={volumeOpen}
+                    >
+                        VOL {volumePercent}%
+                    </button>
+                    {volumeOpen && hasTrack && (
+                        <div
+                            style={{
+                                position: "absolute",
+                                bottom: "calc(100% + 10px)",
+                                left: "50%",
+                                transform: "translateX(-50%)",
+                                background: "rgba(24,24,24,0.9)",
+                                borderRadius: 999,
+                                padding: "30px 14px",
+                                border: "1px solid rgba(255,255,255,0.08)",
+                                boxShadow: "0 18px 30px rgba(0,0,0,0.4)"
+                            }}
+                        >
+                            <input
+                                type="range"
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={1 - (volume ?? 1)}
+                                onChange={handleVolumeChange}
+                                aria-label="Volume"
+                                orient="vertical"
+                                style={{
+                                    writingMode: "vertical-rl",
+                                    WebkitAppearance: "slider-vertical",
+                                    width: 10,
+                                    height: 140,
+                                    padding: 0,
+                                    margin: 0,
+                                    background: "transparent",
+                                    accentColor: "#ff5500"
+                                }}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "12px" }} ref={menuRef}>

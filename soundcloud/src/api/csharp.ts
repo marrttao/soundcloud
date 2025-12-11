@@ -3,7 +3,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5237', // ← порт, на котором сейчас запущен твой C# бэкенд
+  baseURL: 'http://localhost:5120', // ← порт, на котором сейчас запущен твой C# бэкенд
   timeout: 10000,
 });
 

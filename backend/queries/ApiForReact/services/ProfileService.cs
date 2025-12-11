@@ -31,6 +31,7 @@ public class ProfileService
 
         var trackRecords = await _supabase.GetTracksAsync(user.Id, accessToken);
         var playlists = await _supabase.GetPlaylistsAsync(user.Id, user.Id, accessToken);
+        var likedPlaylists = await _supabase.GetLikedPlaylistsAsync(user.Id, accessToken);
         var likes = await _supabase.GetLikedTracksAsync(user.Id, accessToken);
         var relations = await _supabase.GetFollowingRelationsAsync(user.Id, accessToken);
         var followingIds = relations.Select(r => r.FollowingId).Distinct().ToList();
@@ -116,6 +117,7 @@ public class ProfileService
             Stats = stats,
             Tracks = profileTracks,
             Playlists = playlists,
+            LikedPlaylists = likedPlaylists,
             Likes = likedTracks,
             Following = followingList
         };
@@ -134,6 +136,7 @@ public class ProfileService
         var trackRecords = await _supabase.GetTracksAsync(userId, accessToken);
         var likes = await _supabase.GetLikedTracksAsync(userId, accessToken);
         var playlists = await _supabase.GetPlaylistsAsync(userId, viewerId, accessToken);
+        var likedPlaylists = await _supabase.GetLikedPlaylistsAsync(userId, accessToken);
         var relations = await _supabase.GetFollowingRelationsAsync(userId, accessToken);
         var followingIds = relations.Select(r => r.FollowingId).Distinct().ToList();
 
@@ -218,6 +221,7 @@ public class ProfileService
             Stats = stats,
             Tracks = profileTracks,
             Playlists = playlists,
+            LikedPlaylists = likedPlaylists,
             Likes = likedTracks,
             Following = followingList
         };

@@ -8,6 +8,7 @@ import Upload from "./screens/upload/upload.jsx";
 import NotFound from "./components/404.jsx";
 import TrackPage from "./screens/track/TrackPage.jsx";
 import PlaylistPage from "./screens/playlist/PlaylistPage.jsx";
+import Library from "./screens/main/Library.jsx";
 import { readAuthFlag } from "./utils/authFlag";
 
 const App = () => {
@@ -33,6 +34,7 @@ const App = () => {
       <Route path="/profile" element={isAuthenticated ? <Profile /> : <LandingPage />} />
       <Route path="/profile/:username" element={isAuthenticated ? <Profile /> : <LandingPage />} />
       <Route path="/feed" element={isAuthenticated ? <FeedPage /> : <LandingPage />} />
+      <Route path="/library" element={isAuthenticated ? <Library /> : <LandingPage />} />
       <Route path="/upload" element={isAuthenticated ? <Upload /> : <LandingPage />} />
       <Route path="/tracks/:trackId" element={isAuthenticated ? <TrackPage /> : <LandingPage />} />
       <Route path="/playlists/:playlistId" element={isAuthenticated ? <PlaylistPage /> : <LandingPage />} />
