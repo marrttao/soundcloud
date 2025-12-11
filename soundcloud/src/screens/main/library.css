@@ -35,14 +35,16 @@
 }
 
 .library-tabs {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 4px 8px;
+  gap: 16px;
+  padding: 0 0 12px;
   border-bottom: 1px solid var(--library-border);
   flex-wrap: wrap;
   margin: 0 auto;
-  justify-content: center;
+  width: 100%;
+  max-width: 880px;
+  justify-content: flex-start;
 }
 
 .library-tab {
@@ -195,6 +197,7 @@
 
   .library-tabs {
     justify-content: center;
+    max-width: none;
   }
 
   .library-stack {

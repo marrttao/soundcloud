@@ -143,7 +143,7 @@ const formatRelativeTime = (value) => {
   return date.toLocaleDateString();
 };
 
-const TrackList = ({ title, tracks = [], loading = false, emptyMessage, showPlayedAt = false }) => {
+const TrackList = ({ title, tracks = [], loading = false, emptyMessage, showPlayedAt = false, viewAllPath }) => {
   const navigate = useNavigate();
   const { playTrack } = usePlayer();
 
@@ -169,18 +169,31 @@ const TrackList = ({ title, tracks = [], loading = false, emptyMessage, showPlay
     }
   };
 
+  const handleViewAll = useCallback(() => {
+    if (viewAllPath) {
+      navigate(viewAllPath);
+    }
+  }, [navigate, viewAllPath]);
+
   return (
     <div style={{ marginBottom: 32 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
         <span style={{ fontWeight: 600, fontSize: 14, letterSpacing: 0.5 }}>{title}</span>
-        <button type="button" style={{
+        <button
+          type="button"
+          onClick={handleViewAll}
+          disabled={!viewAllPath}
+          style={{
           background: "none",
           border: "none",
-          color: "#bbb",
+          color: viewAllPath ? "#bbb" : "#555",
           fontSize: 13,
-          cursor: "pointer",
+          cursor: viewAllPath ? "pointer" : "default",
           fontWeight: 500
-        }}>View all</button>
+        }}
+        >
+          View all
+        </button>
       </div>
       <div>
         {loading ? (
@@ -445,6 +458,7 @@ const SideBar = () => {
           tracks={likes}
           loading={loading && likes.length === 0}
           emptyMessage="You haven't liked any tracks yet."
+          viewAllPath="/library?tab=likes"
         />
         <TrackList
           title="LISTENING HISTORY"
@@ -452,6 +466,7 @@ const SideBar = () => {
           loading={loading && history.length === 0}
           showPlayedAt
           emptyMessage="Play something to see it here."
+          viewAllPath="/library?tab=history"
         />
       </div>
       <div style={{

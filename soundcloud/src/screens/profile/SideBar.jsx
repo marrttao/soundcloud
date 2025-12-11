@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePlayer } from "../../context/PlayerContext";
 
@@ -8,7 +8,7 @@ const MUSIC_NOTE_ICON = "\u{1F3B5}\uFE0E";
 const formatCount = (value = 0) =>
   value >= 1000 ? `${(value / 1000).toFixed(1).replace(/\.0$/, "")}K` : value.toString();
 
-const TrackList = ({ title, tracks }) => {
+const TrackList = ({ title, tracks, viewAllPath }) => {
   const navigate = useNavigate();
   const { playTrack } = usePlayer();
 
@@ -35,18 +35,31 @@ const TrackList = ({ title, tracks }) => {
     }
   };
 
+  const handleViewAll = useCallback(() => {
+    if (viewAllPath) {
+      navigate(viewAllPath);
+    }
+  }, [navigate, viewAllPath]);
+
   return (
     <div style={{ marginBottom: 32 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
         <span style={{ fontWeight: 600, fontSize: 14, letterSpacing: 0.5 }}>{title}</span>
-        <button style={{
+        <button
+          type="button"
+          onClick={handleViewAll}
+          disabled={!viewAllPath}
+          style={{
           background: "none",
           border: "none",
-          color: "#bbb",
+          color: viewAllPath ? "#bbb" : "#555",
           fontSize: 13,
-          cursor: "pointer",
+          cursor: viewAllPath ? "pointer" : "default",
           fontWeight: 500
-        }}>View all</button>
+        }}
+        >
+          View all
+        </button>
       </div>
       <div>
         {tracks?.length ? tracks.map((track, idx) => (
@@ -104,7 +117,8 @@ const TrackList = ({ title, tracks }) => {
   );
 };
 
-const SideBar = ({ stats, likes, following, loading }) => {
+const SideBar = ({ stats, likes, following, loading, profileRouteBase = "/profile" }) => {
+  const navigate = useNavigate();
   const statItems = [
     { label: "Followers", value: stats?.followers ?? 0 },
     { label: "Following", value: stats?.following ?? 0 },
@@ -131,18 +145,28 @@ const SideBar = ({ stats, likes, following, loading }) => {
             </div>
           ))}
         </div>
-        <TrackList title={likeTitle} tracks={likes} />
+        <TrackList
+          title={likeTitle}
+          tracks={likes}
+          viewAllPath={`${profileRouteBase}?tab=likes`}
+        />
         <div style={{ marginTop: 28 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <span style={{ fontWeight: 600, fontSize: 14, letterSpacing: 0.5 }}>{(following?.length ?? 0).toString()} FOLLOWING</span>
-            <button style={{
-              background: "none",
-              border: "none",
-              color: "#bbb",
-              fontSize: 13,
-              cursor: "pointer",
-              fontWeight: 500
-            }}>View all</button>
+            <button
+              type="button"
+              onClick={() => navigate(`${profileRouteBase}?tab=following`)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#bbb",
+                fontSize: 13,
+                cursor: "pointer",
+                fontWeight: 500
+              }}
+            >
+              View all
+            </button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {(following?.length ? following : []).map(person => (

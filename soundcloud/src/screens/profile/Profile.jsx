@@ -200,6 +200,7 @@ const Profile = () => {
               likes={profileData?.likes}
               following={profileData?.following}
               loading={loading}
+              profileRouteBase={username ? `/profile/${encodeURIComponent(username)}` : "/profile"}
             />
           </div>
         </div>
