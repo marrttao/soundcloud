@@ -127,7 +127,8 @@ namespace queries.ApiForReact
                 catch (HttpRequestException ex)
                 {
                     var status = ex.StatusCode ?? HttpStatusCode.BadRequest;
-                    return Results.StatusCode((int)status);
+                    var message = string.IsNullOrWhiteSpace(ex.Message) ? "Unable to create playlist." : ex.Message;
+                    return Results.Problem(title: message, statusCode: (int)status);
                 }
             });
 
@@ -189,7 +190,8 @@ namespace queries.ApiForReact
                 catch (HttpRequestException ex)
                 {
                     var status = ex.StatusCode ?? HttpStatusCode.BadRequest;
-                    return Results.StatusCode((int)status);
+                    var message = string.IsNullOrWhiteSpace(ex.Message) ? "Unable to create playlist." : ex.Message;
+                    return Results.Problem(title: message, statusCode: (int)status);
                 }
             });
 
@@ -215,7 +217,8 @@ namespace queries.ApiForReact
                 catch (HttpRequestException ex)
                 {
                     var status = ex.StatusCode ?? HttpStatusCode.BadRequest;
-                    return Results.StatusCode((int)status);
+                    var message = string.IsNullOrWhiteSpace(ex.Message) ? "Unable to update playlist." : ex.Message;
+                    return Results.Problem(title: message, statusCode: (int)status);
                 }
             });
 
@@ -295,7 +298,62 @@ namespace queries.ApiForReact
                 catch (HttpRequestException ex)
                 {
                     var status = ex.StatusCode ?? HttpStatusCode.BadRequest;
-                    return Results.StatusCode((int)status);
+                    var message = string.IsNullOrWhiteSpace(ex.Message) ? "Unable to add track to playlist." : ex.Message;
+                    return Results.Problem(title: message, statusCode: (int)status);
+                }
+            });
+
+            app.MapDelete("/playlists/{playlistId}/tracks/{trackId:long}", async (string playlistId, long trackId, HttpRequest httpRequest, SupabaseService supabase) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                try
+                {
+                    await supabase.RemoveTrackFromPlaylistAsync(playlistId, user.Id, trackId, token, httpRequest.HttpContext.RequestAborted);
+                    return Results.Ok();
+                }
+                catch (HttpRequestException ex)
+                {
+                    var status = ex.StatusCode ?? HttpStatusCode.BadRequest;
+                    var message = string.IsNullOrWhiteSpace(ex.Message) ? "Unable to remove track from playlist." : ex.Message;
+                    return Results.Problem(title: message, statusCode: (int)status);
+                }
+            });
+
+            app.MapDelete("/playlists/{playlistId}", async (string playlistId, HttpRequest httpRequest, SupabaseService supabase) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                try
+                {
+                    await supabase.DeletePlaylistAsync(playlistId, user.Id, token, httpRequest.HttpContext.RequestAborted);
+                    return Results.Ok();
+                }
+                catch (HttpRequestException ex)
+                {
+                    var status = ex.StatusCode ?? HttpStatusCode.BadRequest;
+                    var message = string.IsNullOrWhiteSpace(ex.Message) ? "Unable to delete playlist." : ex.Message;
+                    return Results.Problem(title: message, statusCode: (int)status);
                 }
             });
 
@@ -494,6 +552,32 @@ namespace queries.ApiForReact
 
                 await supabase.UnlikeTrackAsync(user.Id, trackId, token, httpRequest.HttpContext.RequestAborted);
                 return Results.Ok(new { liked = false });
+            });
+
+            app.MapPost("/tracks/{trackId:long}/listen", async (long trackId, HttpRequest httpRequest, SupabaseService supabase) =>
+            {
+                var token = ExtractBearerToken(httpRequest);
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var user = await supabase.GetUserAsync(token);
+                if (user == null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                try
+                {
+                    await supabase.RecordListeningHistoryAsync(user.Id, trackId, token, httpRequest.HttpContext.RequestAborted);
+                    return Results.Ok(new { recorded = true });
+                }
+                catch (HttpRequestException ex)
+                {
+                    var status = ex.StatusCode ?? HttpStatusCode.BadRequest;
+                    return Results.StatusCode((int)status);
+                }
             });
 
             app.MapPost("/profiles/{artistId:guid}/follow", async (Guid artistId, HttpRequest httpRequest, SupabaseService supabase) =>

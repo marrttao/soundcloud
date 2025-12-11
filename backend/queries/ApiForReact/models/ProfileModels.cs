@@ -380,7 +380,7 @@ public record PlaylistCreateRequest
     public bool IsPrivate { get; init; }
 
     [JsonPropertyName("initialTrackId")]
-    public long InitialTrackId { get; init; }
+    public long? InitialTrackId { get; init; }
 }
 
 public record PlaylistUpdateRequest

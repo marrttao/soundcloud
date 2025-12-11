@@ -30,18 +30,18 @@ export const fetchMyPlaylists = async () => {
 };
 
 export const createPlaylist = async (payload) => {
-  const initialTrackId = Number(payload?.initialTrackId);
-  if (!Number.isFinite(initialTrackId) || initialTrackId <= 0) {
-    throw new Error("A valid initial track is required to create a playlist.");
-  }
+  const numericInitialTrackId = Number(payload?.initialTrackId);
 
   const requestPayload = {
     title: payload?.title,
     description: payload?.description,
     coverUrl: payload?.coverUrl,
-    isPrivate: Boolean(payload?.isPrivate),
-    initialTrackId
+    isPrivate: Boolean(payload?.isPrivate)
   };
+
+  if (Number.isFinite(numericInitialTrackId) && numericInitialTrackId > 0) {
+    requestPayload.initialTrackId = numericInitialTrackId;
+  }
 
   try {
     const response = await client.post("/playlists", requestPayload, { headers: authHeaders() });
@@ -77,18 +77,19 @@ export const addTrackToPlaylist = async (playlistId, trackId) => {
   }
 };
 
-export const likePlaylist = async (playlistId) => {
+export const removeTrackFromPlaylist = async (playlistId, trackId) => {
   try {
-    await client.post(`/playlists/${playlistId}/like`, null, { headers: authHeaders() });
+    await client.delete(`/playlists/${playlistId}/tracks/${trackId}`, { headers: authHeaders() });
   } catch (error) {
     handleAuthFailure(error);
   }
 };
 
-export const unlikePlaylist = async (playlistId) => {
+export const deletePlaylist = async (playlistId) => {
   try {
-    await client.delete(`/playlists/${playlistId}/like`, { headers: authHeaders() });
+    await client.delete(`/playlists/${playlistId}`, { headers: authHeaders() });
   } catch (error) {
     handleAuthFailure(error);
   }
 };
+

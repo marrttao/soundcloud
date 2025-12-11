@@ -2,6 +2,9 @@ import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePlayer } from "../../context/PlayerContext";
 
+const PEOPLE_ICON = "\u{1F465}\uFE0E";
+const MUSIC_NOTE_ICON = "\u{1F3B5}\uFE0E";
+
 const formatCount = (value = 0) =>
   value >= 1000 ? `${(value / 1000).toFixed(1).replace(/\.0$/, "")}K` : value.toString();
 
@@ -156,8 +159,14 @@ const SideBar = ({ stats, likes, following, loading }) => {
                     {person.username}
                   </div>
                   <div style={{ display: "flex", gap: 12, color: "#bbb", fontSize: 12, marginTop: 2 }}>
-                    <span>👥 {formatCount(person.followers)}</span>
-                    <span>🎵 {formatCount(person.tracks)}</span>
+                    <span>
+                      <span style={{ marginRight: 4, color: "#bbb" }}>{PEOPLE_ICON}</span>
+                      {formatCount(person.followers)}
+                    </span>
+                    <span>
+                      <span style={{ marginRight: 4, color: "#bbb" }}>{MUSIC_NOTE_ICON}</span>
+                      {formatCount(person.tracks)}
+                    </span>
                   </div>
                 </div>
                 <button style={{
@@ -175,30 +184,34 @@ const SideBar = ({ stats, likes, following, loading }) => {
           </div>
         </div>
         <div style={{ marginTop: 28 }}>
-          <div style={{ fontWeight: 600, fontSize: 12, letterSpacing: 1, marginBottom: 10 }}>GO MOBILE</div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <div style={{
-              flex: 1,
-              padding: "10px 14px",
-              borderRadius: 10,
-              background: "#101010",
-              border: "1px solid #202020"
-            }}>
-              <div style={{ fontSize: 10, letterSpacing: 0.6, color: "#9c9c9c" }}>Download on the</div>
-              <div style={{ fontSize: 16, fontWeight: 600 }}>App Store</div>
-            </div>
-            <div style={{
-              flex: 1,
-              padding: "10px 14px",
-              borderRadius: 10,
-              background: "#101010",
-              border: "1px solid #202020"
-            }}>
-              <div style={{ fontSize: 10, letterSpacing: 0.6, color: "#9c9c9c" }}>GET IT ON</div>
-              <div style={{ fontSize: 16, fontWeight: 600 }}>Google Play</div>
-            </div>
+          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 18 }}>GO MOBILE</div>
+          <div style={{ display: "flex", gap: 12, marginBottom: 18 }}>
+            <a
+              href="https://apps.apple.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: "inline-block" }}
+            >
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/6/67/App_Store_%28iOS%29.svg"
+                alt="App Store"
+                style={{ height: 40 }}
+              />
+            </a>
+            <a
+              href="https://play.google.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: "inline-block" }}
+            >
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
+                alt="Google Play"
+                style={{ height: 40 }}
+              />
+            </a>
           </div>
-          <p style={{ marginTop: 16, color: "#9c9c9c", fontSize: 11 }}>Language: English (US)</p>
+          <p style={{ color: "#9c9c9c", fontSize: 11 }}>Language: English (US)</p>
         </div>
       </div>
     </aside>

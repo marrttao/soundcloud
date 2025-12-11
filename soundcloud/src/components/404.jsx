@@ -1,26 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Header from "./Header.jsx";
 import { Link } from "react-router-dom";
-import { fetchProfile } from "../api/profile";
 
 const NotFound = () => {
-  const [avatarUrl, setAvatarUrl] = useState(null);
-
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const data = await fetchProfile();
-        setAvatarUrl(data?.profile?.avatar_url);
-      } catch (err) {
-        console.error("Failed to load profile:", err);
-      }
-    };
-    loadProfile();
-  }, []);
 
   return (
     <>
-      <Header avatarUrl={avatarUrl} />
+      <Header />
     <div style={{
       minHeight: "calc(100vh - 56px)",
       background: "#111111",

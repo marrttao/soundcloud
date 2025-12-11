@@ -5,15 +5,18 @@ import arrow_down from "../assets/icons/arrow_down.png";
 import bell from "../assets/icons/bell.png";
 import message from "../assets/icons/message.png";
 import { search } from "../api/search";
+import { useCurrentProfile } from "../context/ProfileContext";
 // NOTE: This component must be rendered inside a <Router> (e.g., <BrowserRouter>) for NavLink to work.
 
-const Header = ({ avatarUrl }) => {
+const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const menuRef = useRef(null);
   const searchRef = useRef(null);
+  const { profile } = useCurrentProfile();
+  const avatarUrl = profile?.avatar_url ?? null;
 
   useEffect(() => {
     const handleClickOutside = (event) => {

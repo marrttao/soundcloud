@@ -16,7 +16,7 @@ const formatCount = (value = 0) => {
   return value.toString();
 };
 
-const UserTracks = ({ tracks = [], loading = false, title = "Tracks" }) => {
+const UserTracks = ({ tracks = [], loading = false, title = "Tracks", emptyMessage }) => {
   const navigate = useNavigate();
 
   return (
@@ -87,7 +87,7 @@ const UserTracks = ({ tracks = [], loading = false, title = "Tracks" }) => {
           ))}
         </div>
       ) : (
-        <div style={{ color: "#8c8c8c", fontSize: 14 }}>This user has not uploaded tracks yet.</div>
+        <div style={{ color: "#8c8c8c", fontSize: 14 }}>{emptyMessage ?? "This user has not uploaded tracks yet."}</div>
       ))}
     </section>
   );

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -119,10 +120,58 @@ public class SupabaseService
         var response = await SendAuthRequestAsync(HttpMethod.Get, "/auth/v1/user", null, accessToken);
         if (response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden)
         {
+            var decoded = TryDecodeUserFromToken(accessToken);
+            if (decoded != null)
+            {
+                return decoded;
+            }
+
             return null;
         }
 
-        return await ReadJsonAsync<SupabaseUser>(response);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"[WARN] Failed to resolve user from Supabase: {(int)response.StatusCode} {response.StatusCode}. Body: {body}");
+            return null;
+        }
+
+        return await response.Content.ReadFromJsonAsync<SupabaseUser>(_jsonOptions);
+    }
+
+    private SupabaseUser? TryDecodeUserFromToken(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return null;
+        }
+
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var jwt = handler.ReadJwtToken(token);
+
+            var subject = jwt.Claims.FirstOrDefault(claim => claim.Type == "sub")?.Value;
+            if (!Guid.TryParse(subject, out var userId))
+            {
+                return null;
+            }
+
+            var email = jwt.Claims.FirstOrDefault(claim => claim.Type == "email")?.Value;
+            var role = jwt.Claims.FirstOrDefault(claim => claim.Type == "role")?.Value;
+
+            return new SupabaseUser
+            {
+                Id = userId,
+                Email = string.IsNullOrWhiteSpace(email) ? null : email,
+                Role = string.IsNullOrWhiteSpace(role) ? null : role
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[WARN] Failed to decode Supabase access token: {ex.Message}");
+            return null;
+        }
     }
 
     public async Task<List<ProfileDto>> GetProfilesByIdsAsync(IEnumerable<Guid> ids, string accessToken)
@@ -209,6 +258,54 @@ public class SupabaseService
         }
 
         return await ReadJsonAsync<List<ListeningHistoryRecord>>(response) ?? new List<ListeningHistoryRecord>();
+    }
+
+    public async Task RecordListeningHistoryAsync(Guid userId, long trackId, string accessToken, CancellationToken cancellationToken = default)
+    {
+        if (userId == Guid.Empty || trackId <= 0)
+        {
+            return;
+        }
+
+        var payload = new Dictionary<string, object?>
+        {
+            ["user_id"] = userId,
+            ["track_id"] = trackId,
+            ["played_at"] = DateTimeOffset.UtcNow
+        };
+
+        var request = CreateAuthRequest(HttpMethod.Post, "/rest/v1/listening_history?on_conflict=user_id,track_id", payload, accessToken);
+        request.Headers.TryAddWithoutValidation("Prefer", "resolution=merge-duplicates,return=minimal");
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict)
+        {
+            return;
+        }
+
+        if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound or HttpStatusCode.Unauthorized)
+        {
+            await UpsertListeningHistoryWithServiceKeyAsync(payload, cancellationToken);
+            return;
+        }
+
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+        throw new HttpRequestException(string.IsNullOrWhiteSpace(body) ? "Unable to record listening history." : body, null, response.StatusCode);
+    }
+
+    private async Task UpsertListeningHistoryWithServiceKeyAsync(Dictionary<string, object?> payload, CancellationToken cancellationToken)
+    {
+        var fallbackRequest = CreateAuthRequest(HttpMethod.Post, "/rest/v1/listening_history?on_conflict=user_id,track_id", payload);
+        fallbackRequest.Headers.TryAddWithoutValidation("Prefer", "resolution=merge-duplicates,return=minimal");
+
+        using var fallbackResponse = await _httpClient.SendAsync(fallbackRequest, cancellationToken);
+        if (fallbackResponse.IsSuccessStatusCode || fallbackResponse.StatusCode == HttpStatusCode.Conflict)
+        {
+            return;
+        }
+
+        var body = await fallbackResponse.Content.ReadAsStringAsync(cancellationToken);
+        throw new HttpRequestException(string.IsNullOrWhiteSpace(body) ? "Unable to record listening history." : body, null, fallbackResponse.StatusCode);
     }
 
     public async Task<List<TrackRecord>> GetLatestTracksForUsersAsync(IEnumerable<Guid> userIds, int limit, string accessToken, CancellationToken cancellationToken = default)
@@ -959,19 +1056,24 @@ public class SupabaseService
 
     public async Task<PlaylistSummary?> CreatePlaylistAsync(Guid userId, PlaylistCreateRequest request, string accessToken, CancellationToken cancellationToken = default)
     {
-        if (request.InitialTrackId <= 0)
-        {
-            throw new HttpRequestException("An initial track id is required when creating a playlist.", null, HttpStatusCode.BadRequest);
-        }
+        TrackDetailRecord? initialTrack = null;
 
-        var initialTrack = await GetTrackDetailAsync(request.InitialTrackId, userId, accessToken, cancellationToken);
-        if (initialTrack == null)
+        if (request.InitialTrackId.HasValue)
         {
-            throw new HttpRequestException("Initial track not found or inaccessible.", null, HttpStatusCode.NotFound);
+            if (request.InitialTrackId.Value <= 0)
+            {
+                throw new HttpRequestException("An initial track id, when provided, must be positive.", null, HttpStatusCode.BadRequest);
+            }
+
+            initialTrack = await GetTrackDetailAsync(request.InitialTrackId.Value, userId, accessToken, cancellationToken);
+            if (initialTrack == null)
+            {
+                throw new HttpRequestException("Initial track not found or inaccessible.", null, HttpStatusCode.NotFound);
+            }
         }
 
         var coverToUse = string.IsNullOrWhiteSpace(request.CoverUrl)
-            ? (string.IsNullOrWhiteSpace(initialTrack.CoverUrl) ? null : initialTrack.CoverUrl)
+            ? (initialTrack != null && !string.IsNullOrWhiteSpace(initialTrack.CoverUrl) ? initialTrack.CoverUrl : null)
             : request.CoverUrl;
 
         coverToUse = string.IsNullOrWhiteSpace(coverToUse) ? null : coverToUse.Trim();
@@ -1002,14 +1104,17 @@ public class SupabaseService
             return null;
         }
 
-        try
+        if (initialTrack != null)
         {
-            await AddTrackToPlaylistAsync(record.Id, userId, new PlaylistTrackAddRequest { TrackId = initialTrack.Id }, accessToken, cancellationToken);
-        }
-        catch
-        {
-            await TryDeletePlaylistAsync(record.Id, accessToken, cancellationToken);
-            throw;
+            try
+            {
+                await AddTrackToPlaylistAsync(record.Id, userId, new PlaylistTrackAddRequest { TrackId = initialTrack.Id }, accessToken, cancellationToken);
+            }
+            catch
+            {
+                await TryDeletePlaylistAsync(record.Id, accessToken, cancellationToken);
+                throw;
+            }
         }
 
         return new PlaylistSummary
@@ -1020,7 +1125,7 @@ public class SupabaseService
             Description = record.Description,
             CoverUrl = record.CoverUrl ?? coverToUse,
             IsPrivate = record.IsPrivate ?? false,
-            TrackCount = 1,
+            TrackCount = initialTrack != null ? 1 : 0,
             CreatedAt = record.CreatedAt,
             LikesCount = 0
         };
@@ -1144,6 +1249,71 @@ public class SupabaseService
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
             throw new HttpRequestException(string.IsNullOrWhiteSpace(body) ? "Unable to add track to playlist." : body, null, response.StatusCode);
         }
+
+        if (response.StatusCode == HttpStatusCode.Conflict)
+        {
+            return;
+        }
+
+        await UpdatePlaylistCoverFromTracksAsync(playlistId, cancellationToken);
+    }
+
+    public async Task RemoveTrackFromPlaylistAsync(string playlistId, Guid userId, long trackId, string accessToken, CancellationToken cancellationToken = default)
+    {
+        if (trackId <= 0)
+        {
+            throw new HttpRequestException("Invalid track id.", null, HttpStatusCode.BadRequest);
+        }
+
+        var ownerId = await GetPlaylistOwnerAsync(playlistId, cancellationToken);
+        if (ownerId == null)
+        {
+            throw new HttpRequestException("Playlist not found.", null, HttpStatusCode.NotFound);
+        }
+
+        if (ownerId != userId)
+        {
+            throw new HttpRequestException("You do not have permission to modify this playlist.", null, HttpStatusCode.Forbidden);
+        }
+
+        var encodedPlaylistId = Uri.EscapeDataString(playlistId);
+        var deleteRequest = CreateAuthRequest(HttpMethod.Delete, $"/rest/v1/playlist_tracks?playlist_id=eq.{encodedPlaylistId}&track_id=eq.{trackId}", null, accessToken);
+        deleteRequest.Headers.TryAddWithoutValidation("Prefer", "return=minimal");
+
+        using var response = await _httpClient.SendAsync(deleteRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new HttpRequestException(string.IsNullOrWhiteSpace(body) ? "Unable to remove track from playlist." : body, null, response.StatusCode);
+        }
+
+        await NormalizePlaylistTrackPositionsAsync(playlistId, cancellationToken);
+        await UpdatePlaylistCoverFromTracksAsync(playlistId, cancellationToken);
+    }
+
+    public async Task DeletePlaylistAsync(string playlistId, Guid userId, string accessToken, CancellationToken cancellationToken = default)
+    {
+        var ownerId = await GetPlaylistOwnerAsync(playlistId, cancellationToken);
+        if (ownerId == null)
+        {
+            throw new HttpRequestException("Playlist not found.", null, HttpStatusCode.NotFound);
+        }
+
+        if (ownerId != userId)
+        {
+            throw new HttpRequestException("You do not have permission to delete this playlist.", null, HttpStatusCode.Forbidden);
+        }
+
+        var encodedPlaylistId = Uri.EscapeDataString(playlistId);
+        var deleteRequest = CreateAuthRequest(HttpMethod.Delete, $"/rest/v1/playlists?id=eq.{encodedPlaylistId}", null, accessToken);
+        deleteRequest.Headers.TryAddWithoutValidation("Prefer", "return=minimal");
+
+        using var response = await _httpClient.SendAsync(deleteRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new HttpRequestException(string.IsNullOrWhiteSpace(body) ? "Unable to delete playlist." : body, null, response.StatusCode);
+        }
     }
 
     private async Task<PlaylistRecord?> GetPlaylistRecordAsync(string playlistId, string bearer, string mode, CancellationToken cancellationToken)
@@ -1174,6 +1344,73 @@ public class SupabaseService
         }
 
         return await response.Content.ReadFromJsonAsync<List<PlaylistTrackRecord>>(_jsonOptions, cancellationToken) ?? new List<PlaylistTrackRecord>();
+    }
+
+    private async Task NormalizePlaylistTrackPositionsAsync(string playlistId, CancellationToken cancellationToken)
+    {
+        var entries = await GetPlaylistTracksAsync(playlistId, _key, cancellationToken);
+        var ordered = entries
+            .Where(entry => entry.TrackId > 0)
+            .OrderBy(entry => entry.Position ?? int.MaxValue)
+            .ToList();
+
+        var encodedPlaylistId = Uri.EscapeDataString(playlistId);
+
+        for (var index = 0; index < ordered.Count; index++)
+        {
+            var desiredPosition = index + 1;
+            if (ordered[index].Position == desiredPosition)
+            {
+                continue;
+            }
+
+            var payload = new Dictionary<string, object?>
+            {
+                ["position"] = desiredPosition
+            };
+
+            var patchRequest = CreateAuthRequest(HttpMethod.Patch, $"/rest/v1/playlist_tracks?playlist_id=eq.{encodedPlaylistId}&track_id=eq.{ordered[index].TrackId}", payload, _key);
+            patchRequest.Headers.TryAddWithoutValidation("Prefer", "return=minimal");
+
+            using var response = await _httpClient.SendAsync(patchRequest, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                Console.WriteLine($"[WARN] Failed to normalize playlist track position for playlist {playlistId}, track {ordered[index].TrackId}: {response.StatusCode} {body}");
+            }
+        }
+    }
+
+    private async Task UpdatePlaylistCoverFromTracksAsync(string playlistId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var entries = await GetPlaylistTracksAsync(playlistId, _key, cancellationToken);
+            var firstCover = entries
+                .OrderBy(entry => entry.Position ?? int.MaxValue)
+                .Select(entry => entry.Track?.CoverUrl)
+                .FirstOrDefault(url => !string.IsNullOrWhiteSpace(url));
+
+            var payload = new Dictionary<string, object?>
+            {
+                ["cover_url"] = string.IsNullOrWhiteSpace(firstCover) ? null : firstCover!.Trim()
+            };
+
+            var encodedPlaylistId = Uri.EscapeDataString(playlistId);
+            var patchRequest = CreateAuthRequest(HttpMethod.Patch, $"/rest/v1/playlists?id=eq.{encodedPlaylistId}", payload, _key);
+            patchRequest.Headers.TryAddWithoutValidation("Prefer", "return=minimal");
+
+            using var response = await _httpClient.SendAsync(patchRequest, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                Console.WriteLine($"[WARN] Failed to update cover for playlist {playlistId}: {response.StatusCode} {body}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[WARN] Exception while updating cover for playlist {playlistId}: {ex.Message}");
+        }
     }
 
     private async Task<Dictionary<string, int>> GetPlaylistTrackCountsAsync(IEnumerable<string> playlistIds, CancellationToken cancellationToken)

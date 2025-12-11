@@ -9,6 +9,7 @@ import CreatePlaylistModal from "./CreatePlaylistModal.jsx";
 import { fetchProfile, fetchProfileByUsername } from "../../api/profile";
 import UserTracks from "./UserTracks.jsx";
 import UserPlaylists from "./UserPlaylists.jsx";
+import { useCurrentProfile } from "../../context/ProfileContext";
 
 const Profile = () => {
   const { username } = useParams();
@@ -18,63 +19,67 @@ const Profile = () => {
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const tabParam = (searchParams.get("tab") ?? "").toLowerCase();
   const activeTab = tabWhitelist.has(tabParam) ? tabParam : "all";
+  const normalizedUsername = useMemo(() => (username ?? "").toLowerCase(), [username]);
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showEditModal, setShowEditModal] = useState(false);
-  const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [showCreatePlaylistModal, setShowCreatePlaylistModal] = useState(false);
+  const [lastFetchedKey, setLastFetchedKey] = useState(null);
+  const { profile: currentUserProfile } = useCurrentProfile();
 
-  // Получить профиль текущего пользователя для сравнения
   useEffect(() => {
-    const getCurrentUser = async () => {
-      try {
-        const data = await fetchProfile();
-        setCurrentUserProfile(data?.profile);
-      } catch (err) {
-        console.error("Failed to fetch current user:", err);
-        setError(err?.message ?? "Unable to load profile.");
-      }
-    };
-    getCurrentUser();
-  }, []);
+    if (!username) {
+      return;
+    }
+    if (tabWhitelist.has(normalizedUsername)) {
+      const canonical = normalizedUsername === "all" ? "/profile" : `/profile?tab=${normalizedUsername}`;
+      navigate(canonical, { replace: true });
+    }
+  }, [navigate, normalizedUsername, tabWhitelist, username]);
 
-  const refreshProfile = useCallback(async () => {
+  const loadProfileData = useCallback(async ({ force = false } = {}) => {
+    const profileKey = normalizedUsername || "__self__";
+
+    if (username && tabWhitelist.has(normalizedUsername)) {
+      return;
+    }
+
+    if (!force && lastFetchedKey === profileKey && profileData) {
+      return;
+    }
+
+    if (lastFetchedKey !== profileKey) {
+      setProfileData(null);
+    }
+
     setLoading(true);
+    setError("");
     try {
       let data;
       if (username) {
-        try {
-          data = await fetchProfileByUsername(username);
-        } catch (err) {
-          const normalized = username.toLowerCase();
-          const status = err?.response?.status;
-          if (status === 404 && tabWhitelist.has(normalized)) {
-            data = await fetchProfile();
-            if (!location.search) {
-              const canonical = normalized === "all" ? "/profile" : `/profile?tab=${normalized}`;
-              navigate(canonical, { replace: true });
-            }
-          } else {
-            throw err;
-          }
-        }
+        data = await fetchProfileByUsername(username);
       } else {
         data = await fetchProfile();
       }
 
       setProfileData(data);
       setError("");
+      setLastFetchedKey(profileKey);
     } catch (err) {
+      console.error("Failed to load profile data", err);
       setError(err?.response?.data ?? err?.message ?? "Unable to load profile.");
+      setLastFetchedKey(null);
     } finally {
       setLoading(false);
     }
-  }, [location.search, navigate, tabWhitelist, username]);
+  }, [fetchProfile, fetchProfileByUsername, lastFetchedKey, normalizedUsername, profileData, tabWhitelist, username]);
 
   useEffect(() => {
-    refreshProfile();
-  }, [refreshProfile]);
+    loadProfileData();
+  }, [loadProfileData]);
+
+  const refreshProfile = useCallback(() => loadProfileData({ force: true }), [loadProfileData]);
 
   // Проверка является ли это своим профилем
   const isOwnProfile = !username || (currentUserProfile && profileData?.profile?.username === currentUserProfile?.username);
@@ -159,7 +164,7 @@ const Profile = () => {
       display: "flex",
       flexDirection: "column"
     }}>
-      <Header avatarUrl={currentUserProfile?.avatar_url} />
+      <Header />
       <div style={{
         marginTop: 56,
         flex: 1,
@@ -226,7 +231,6 @@ const Profile = () => {
             setShowCreatePlaylistModal(false);
             await refreshProfile();
           }}
-          availableTracks={tracks}
         />
       )}
     </div>

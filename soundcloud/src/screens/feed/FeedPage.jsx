@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header.jsx";
 import Footer from "../../components/Footer.jsx";
-import { fetchProfile } from "../../api/profile";
 import { fetchFeed } from "../../api/feed";
 import { usePlayer } from "../../context/PlayerContext";
 
@@ -34,24 +33,11 @@ const formatTimeAgo = (value) => {
 };
 
 const FeedPage = () => {
-  const [avatarUrl, setAvatarUrl] = useState(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const { playTrack } = usePlayer();
-
-  useEffect(() => {
-    const loadProfileAvatar = async () => {
-      try {
-        const data = await fetchProfile();
-        setAvatarUrl(data?.profile?.avatar_url ?? null);
-      } catch (err) {
-        console.error("Failed to load profile avatar", err);
-      }
-    };
-    loadProfileAvatar();
-  }, []);
 
   const loadFeed = useCallback(async () => {
     setLoading(true);
@@ -72,8 +58,15 @@ const FeedPage = () => {
     loadFeed();
   }, [loadFeed]);
 
-  const trackItems = useMemo(() => items.filter((item) => item?.type === "track" && item.track), [items]);
-  const playlistItems = useMemo(() => items.filter((item) => item?.type === "playlist" && item.playlist), [items]);
+  const trackItems = useMemo(
+    () => items.filter((item) => item?.type === "track" && item.track),
+    [items]
+  );
+
+  const playlistItems = useMemo(
+    () => items.filter((item) => item?.type === "playlist" && item.playlist),
+    [items]
+  );
 
   const { queue: trackQueue, indexMap: trackIndexLookup } = useMemo(() => {
     const queue = [];
@@ -140,7 +133,7 @@ const FeedPage = () => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#141414" }}>
-      <Header avatarUrl={avatarUrl} />
+      <Header />
       <main style={{ flex: 1, marginTop: 56, padding: "80px 16px 120px", display: "flex", justifyContent: "center" }}>
         <div style={{ width: "100%", maxWidth: 760, display: "flex", flexDirection: "column", gap: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -184,9 +177,9 @@ const FeedPage = () => {
                   <div
                     key={`track-${item.track.trackId}-${index}`}
                     style={{
-                      background: "#1a1a1a",
+                      background: "#101010",
                       borderRadius: 12,
-                      border: "1px solid #242424",
+                      border: "1px solid #1f1f1f",
                       padding: 20,
                       display: "flex",
                       flexDirection: "column",
@@ -294,9 +287,9 @@ const FeedPage = () => {
                   <div
                     key={`playlist-${item.playlist.id}-${index}`}
                     style={{
-                      background: "#1a1a1a",
+                      background: "#101010",
                       borderRadius: 12,
-                      border: "1px solid #242424",
+                      border: "1px solid #1f1f1f",
                       padding: 20,
                       display: "flex",
                       flexDirection: "column",

@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Header from "../../components/Header.jsx";
 import Footer from "../../components/Footer.jsx";
-import { fetchProfile } from "../../api/profile";
 import { fetchTrack, likeTrack, unlikeTrack, followArtist, unfollowArtist } from "../../api/track";
 import AddToPlaylistModal from "../../components/AddToPlaylistModal.jsx";
 import { usePlayer } from "../../context/PlayerContext";
@@ -19,9 +18,9 @@ const formatDuration = (seconds) => {
 
 const TrackPage = () => {
   const { trackId } = useParams();
+  const navigate = useNavigate();
   const numericId = Number(trackId);
 
-  const [avatarUrl, setAvatarUrl] = useState(null);
   const [track, setTrack] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -41,18 +40,6 @@ const TrackPage = () => {
     likeInFlight,
     followInFlight
   } = usePlayer();
-
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const profile = await fetchProfile();
-        setAvatarUrl(profile?.profile?.avatar_url ?? null);
-      } catch (err) {
-        console.error("Failed to load current profile", err);
-      }
-    };
-    loadProfile();
-  }, []);
 
   useEffect(() => {
     if (!Number.isFinite(numericId)) {
@@ -114,6 +101,14 @@ const TrackPage = () => {
     if (!track?.artist) return "";
     return track.artist.fullName ?? track.artist.username ?? "";
   }, [track]);
+  const artistUsername = track?.artist?.username ?? null;
+
+  const handleOpenArtistProfile = () => {
+    if (!artistUsername) {
+      return;
+    }
+    navigate(`/profile/${artistUsername}`);
+  };
 
   const isCurrent = currentTrack?.id === track?.id;
   const isTrackPlaying = isCurrent && isPlaying;
@@ -247,7 +242,7 @@ const TrackPage = () => {
       display: "flex",
       flexDirection: "column"
     }}>
-      <Header avatarUrl={avatarUrl} />
+      <Header />
       <main style={{
         flex: 1,
         display: "flex",
@@ -269,7 +264,7 @@ const TrackPage = () => {
                 <div style={{
                   width: 168,
                   height: 168,
-                  borderRadius: 16,
+                  borderRadius: 0,
                   background: "#1f1f1f",
                   display: "flex",
                   alignItems: "center",
@@ -292,7 +287,25 @@ const TrackPage = () => {
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
                   <div>
                     <h1 style={{ margin: 0, color: "#fff", fontSize: 32 }}>{track.title}</h1>
-                    <div style={{ color: "#ccc", fontSize: 16, marginTop: 4 }}>{artistDisplayName}</div>
+                    <button
+                      type="button"
+                      onClick={handleOpenArtistProfile}
+                      disabled={!artistUsername}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: artistUsername ? "#f0f0f0" : "#ccc",
+                        fontSize: 16,
+                        marginTop: 4,
+                        padding: 0,
+                        textAlign: "left",
+                        cursor: artistUsername ? "pointer" : "default",
+                        textDecoration: artistUsername ? "underline" : "none",
+                        textUnderlineOffset: 4
+                      }}
+                    >
+                      {artistDisplayName || "Unknown artist"}
+                    </button>
                   </div>
                   <div style={{ display: "flex", gap: 12 }}>
                     <button
@@ -302,11 +315,10 @@ const TrackPage = () => {
                         background: "#ff5500",
                         color: "#fff",
                         border: "none",
-                        borderRadius: 999,
+                        borderRadius: 0,
                         padding: "10px 28px",
                         fontWeight: 600,
-                        cursor: "pointer",
-                        boxShadow: isTrackPlaying ? "0 0 14px rgba(255,85,0,0.4)" : "none"
+                        cursor: "pointer"
                       }}
                     >
                       {isTrackPlaying ? "Pause" : isCurrent ? "Resume" : "Play"}
@@ -319,7 +331,7 @@ const TrackPage = () => {
                         background: "#232323",
                         color: track.isLiked ? "#ff5500" : "#fff",
                         border: "1px solid #2f2f2f",
-                        borderRadius: 999,
+                        borderRadius: 0,
                         padding: "10px 20px",
                         fontWeight: 600,
                         cursor: effectiveLikeLoading ? "wait" : "pointer"
@@ -335,7 +347,7 @@ const TrackPage = () => {
                         background: "#232323",
                         color: track.isFollowing ? "#ff5500" : "#fff",
                         border: "1px solid #2f2f2f",
-                        borderRadius: 999,
+                        borderRadius: 0,
                         padding: "10px 20px",
                         fontWeight: 600,
                         cursor: effectiveFollowLoading ? "wait" : "pointer"
@@ -350,7 +362,7 @@ const TrackPage = () => {
                         background: "#232323",
                         color: "#fff",
                         border: "1px solid #2f2f2f",
-                        borderRadius: 999,
+                        borderRadius: 0,
                         padding: "10px 20px",
                         fontWeight: 600,
                         cursor: "pointer"
@@ -363,21 +375,21 @@ const TrackPage = () => {
               </div>
 
               <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-                <div style={{ flex: "1 1 240px", background: "#1a1a1a", padding: "16px 20px", borderRadius: 16 }}>
+                <div style={{ flex: "1 1 240px", background: "#1a1a1a", padding: "16px 20px", borderRadius: 0 }}>
                   <div style={{ color: "#888", fontSize: 12, letterSpacing: 0.6 }}>Duration</div>
                   <div style={{ color: "#fff", fontSize: 20, fontWeight: 600 }}>{formatDuration(track.durationSeconds)}</div>
                 </div>
-                <div style={{ flex: "1 1 240px", background: "#1a1a1a", padding: "16px 20px", borderRadius: 16 }}>
+                <div style={{ flex: "1 1 240px", background: "#1a1a1a", padding: "16px 20px", borderRadius: 0 }}>
                   <div style={{ color: "#888", fontSize: 12, letterSpacing: 0.6 }}>Plays</div>
                   <div style={{ color: "#fff", fontSize: 20, fontWeight: 600 }}>{track.playsCount ?? 0}</div>
                 </div>
-                <div style={{ flex: "1 1 240px", background: "#1a1a1a", padding: "16px 20px", borderRadius: 16 }}>
+                <div style={{ flex: "1 1 240px", background: "#1a1a1a", padding: "16px 20px", borderRadius: 0 }}>
                   <div style={{ color: "#888", fontSize: 12, letterSpacing: 0.6 }}>Likes</div>
                   <div style={{ color: "#fff", fontSize: 20, fontWeight: 600 }}>{track.likesCount ?? 0}</div>
                 </div>
               </div>
               {track.description && (
-                <div style={{ background: "#1a1a1a", padding: "20px", borderRadius: 16 }}>
+                <div style={{ background: "#1a1a1a", padding: "20px", borderRadius: 0 }}>
                   <div style={{ color: "#888", fontSize: 12, letterSpacing: 0.6, marginBottom: 8 }}>Description</div>
                   <p style={{ color: "#ddd", lineHeight: 1.6, margin: 0 }}>{track.description}</p>
                 </div>

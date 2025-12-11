@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import likeIcon from "../assets/icons/like.png";
 import nextIcon from "../assets/icons/next.png";
 import prevIcon from "../assets/icons/prev.png";
@@ -173,8 +173,51 @@ const Footer = () => {
     };
 
     const volumePercent = Math.round((volume ?? 1) * 100);
+    const volumeIcon = useMemo(() => {
+        const level = volume ?? 1;
+        const isMuted = level <= 0.001;
+        const moderate = level > 0.001 && level <= 0.6;
+        const baseOpacity = hasTrack ? 1 : 0.4;
+
+        return (
+            <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{ display: "block" }}
+            >
+                <path
+                    d="M4 9V15H7.5L12 19V5L7.5 9H4Z"
+                    fill="#ffffff"
+                    fillOpacity={baseOpacity}
+                />
+                {!isMuted && (
+                    <path
+                        d="M15 9.5C15.9 10.4 16.5 11.6 16.5 13C16.5 14.4 15.9 15.6 15 16.5"
+                        stroke="#ffffff"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeOpacity={baseOpacity}
+                        fill="none"
+                    />
+                )}
+                {!isMuted && !moderate && (
+                    <path
+                        d="M18 7C19.5 8.5 20.4 10.6 20.4 13C20.4 15.4 19.5 17.5 18 19"
+                        stroke="#ff5500"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeOpacity={baseOpacity}
+                        fill="none"
+                    />
+                )}
+            </svg>
+        );
+    }, [hasTrack, volume]);
 
     return (
+        <>
         <footer
             style={{
                 background: "#181818",
@@ -304,17 +347,20 @@ const Footer = () => {
                             background: "#242424",
                             border: "1px solid #444",
                             borderRadius: 999,
-                            padding: "6px 14px",
+                            padding: "6px 12px",
                             color: "#fff",
-                            fontSize: 12,
-                            letterSpacing: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            minWidth: 40,
                             cursor: hasTrack ? "pointer" : "not-allowed",
                             opacity: hasTrack ? 1 : 0.4
                         }}
                         aria-haspopup="true"
                         aria-expanded={volumeOpen}
+                        aria-label={`Volume ${volumePercent}%`}
                     >
-                        VOL {volumePercent}%
+                        {volumeIcon}
                     </button>
                     {volumeOpen && hasTrack && (
                         <div
@@ -339,6 +385,7 @@ const Footer = () => {
                                 onChange={handleVolumeChange}
                                 aria-label="Volume"
                                 orient="vertical"
+                                className="volume-slider"
                                 style={{
                                     writingMode: "vertical-rl",
                                     WebkitAppearance: "slider-vertical",
@@ -346,8 +393,7 @@ const Footer = () => {
                                     height: 140,
                                     padding: 0,
                                     margin: 0,
-                                    background: "transparent",
-                                    accentColor: "#ff5500"
+                                    background: "transparent"
                                 }}
                             />
                         </div>
@@ -452,6 +498,40 @@ const Footer = () => {
                 onAdded={() => setShowAddModal(false)}
             />
         </footer>
+        <style>{`
+            .volume-slider {
+                -webkit-appearance: slider-vertical;
+                appearance: slider-vertical;
+                background: transparent;
+            }
+            .volume-slider::-webkit-slider-runnable-track {
+                width: 10px;
+                background: #ffffff;
+                border-radius: 999px;
+            }
+            .volume-slider::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                background: #ff5500;
+                border: 2px solid #ffffff;
+                margin-top: -3px;
+            }
+            .volume-slider::-moz-range-track {
+                width: 10px;
+                background: #ffffff;
+                border-radius: 999px;
+            }
+            .volume-slider::-moz-range-thumb {
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                background: #ff5500;
+                border: 2px solid #ffffff;
+            }
+        `}</style>
+        </>
     );
 };
 

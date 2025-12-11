@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPlaylist } from "../../api/playlist";
 
 const overlayStyle = {
@@ -48,7 +48,7 @@ const inputStyle = {
 const textareaStyle = {
   ...inputStyle,
   resize: "vertical",
-  minHeight: 80
+  minHeight: 100
 };
 
 const buttonRowStyle = {
@@ -78,36 +78,13 @@ const secondaryButtonStyle = {
   cursor: "pointer"
 };
 
-const CreatePlaylistModal = ({ onClose, onSuccess, availableTracks = [] }) => {
+const CreatePlaylistModal = ({ onClose, onSuccess }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
-  const isMounted = useRef(true);
-  const trackOptions = useMemo(() => {
-    const seen = new Set();
-    return availableTracks
-      .map((track) => {
-        const idCandidate = track?.trackId ?? track?.id ?? track?.track?.id;
-        const numericId = Number(idCandidate);
-        if (!Number.isFinite(numericId) || numericId <= 0 || seen.has(numericId)) {
-          return null;
-        }
-        seen.add(numericId);
-        const rawTitle = track?.title ?? track?.name ?? track?.track?.title;
-        const label = typeof rawTitle === "string" && rawTitle.trim().length
-          ? rawTitle.trim()
-          : `Track #${numericId}`;
-        return { id: numericId, label };
-      })
-      .filter(Boolean);
-  }, [availableTracks]);
-  const [initialTrackId, setInitialTrackId] = useState(() => (trackOptions[0]?.id ? String(trackOptions[0].id) : ""));
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    setInitialTrackId(trackOptions[0]?.id ? String(trackOptions[0].id) : "");
-  }, [trackOptions]);
+  const [submitting, setSubmitting] = useState(false);
+  const isMounted = useRef(true);
 
   useEffect(() => () => {
     isMounted.current = false;
@@ -115,35 +92,29 @@ const CreatePlaylistModal = ({ onClose, onSuccess, availableTracks = [] }) => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!title.trim()) {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
       setError("Playlist name is required.");
-      return;
-    }
-    if (!initialTrackId) {
-      setError("Select a track to include in the new playlist.");
       return;
     }
 
     setSubmitting(true);
     setError("");
     try {
-      const numericInitialTrackId = Number(initialTrackId);
-      if (!Number.isFinite(numericInitialTrackId) || numericInitialTrackId <= 0) {
-        throw new Error("Invalid track selected. Choose another track.");
-      }
       await createPlaylist({
-        title: title.trim(),
+        title: trimmedTitle,
         description: description.trim() ? description.trim() : null,
         coverUrl: null,
-        isPrivate,
-        initialTrackId: numericInitialTrackId
+        isPrivate
       });
+
       if (onSuccess) {
         await onSuccess();
       }
     } catch (err) {
       console.error("Failed to create playlist", err);
-      setError(err?.message ?? "Unable to create playlist.");
+      const serverMessage = err?.response?.data?.title ?? err?.response?.data?.detail ?? err?.response?.data;
+      setError(typeof serverMessage === "string" && serverMessage.trim().length ? serverMessage : err?.message ?? "Unable to create playlist.");
     } finally {
       if (isMounted.current) {
         setSubmitting(false);
@@ -179,29 +150,6 @@ const CreatePlaylistModal = ({ onClose, onSuccess, availableTracks = [] }) => {
             disabled={submitting}
           />
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <label style={labelStyle} htmlFor="playlist-initial-track">First track</label>
-          {trackOptions.length ? (
-            <select
-              id="playlist-initial-track"
-              style={{
-                ...inputStyle,
-                appearance: "none"
-              }}
-              value={initialTrackId}
-              onChange={(event) => setInitialTrackId(event.target.value)}
-              disabled={submitting}
-            >
-              {trackOptions.map((option) => (
-                <option key={option.id} value={option.id}>{option.label}</option>
-              ))}
-            </select>
-          ) : (
-            <div style={{ color: "#ff9f6f", fontSize: 13 }}>
-              Upload a track before creating a playlist. A playlist must contain at least one track.
-            </div>
-          )}
-        </div>
         <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
           <input
             type="checkbox"
@@ -218,8 +166,8 @@ const CreatePlaylistModal = ({ onClose, onSuccess, availableTracks = [] }) => {
           </button>
           <button
             type="submit"
-            style={primaryButtonStyle(submitting || !trackOptions.length)}
-            disabled={submitting || !trackOptions.length}
+            style={primaryButtonStyle(submitting)}
+            disabled={submitting}
           >
             {submitting ? "Creating…" : "Create"}
           </button>

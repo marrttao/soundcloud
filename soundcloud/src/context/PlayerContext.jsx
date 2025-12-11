@@ -4,7 +4,8 @@ import {
   likeTrack as apiLikeTrack,
   unlikeTrack as apiUnlikeTrack,
   followArtist as apiFollowArtist,
-  unfollowArtist as apiUnfollowArtist
+  unfollowArtist as apiUnfollowArtist,
+  markTrackPlayed
 } from "../api/track";
 
 const PlayerContext = createContext(null);
@@ -188,6 +189,9 @@ export const PlayerProvider = ({ children }) => {
       }));
 
       await audio.play();
+      markTrackPlayed(detail.id).catch((err) => {
+        console.warn("Failed to persist listening history", err);
+      });
     } catch (error) {
       console.error("Failed to play track", error);
       setPlayerState((prev) => ({

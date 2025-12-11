@@ -133,3 +133,22 @@ CREATE POLICY "allow_authenticated_insert_playlist_likes" ON playlist_likes
 CREATE POLICY "allow_owner_delete_playlist_likes" ON playlist_likes
   FOR DELETE
   USING (user_id = auth.uid());
+
+-- Enable RLS for listening history so listeners can persist their sessions
+ALTER TABLE listening_history ENABLE ROW LEVEL SECURITY;
+
+GRANT SELECT, INSERT, UPDATE ON listening_history TO authenticated;
+GRANT SELECT ON listening_history TO anon;
+
+CREATE POLICY "allow_user_insert_listening_history" ON listening_history
+  FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "allow_user_update_listening_history" ON listening_history
+  FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "allow_user_view_own_history" ON listening_history
+  FOR SELECT
+  USING (auth.uid() = user_id);

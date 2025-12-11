@@ -1,0 +1,110 @@
+:root {
+  --playlist-track-scroll-bg: rgba(255, 255, 255, 0.04);
+  --playlist-track-scroll-thumb: rgba(255, 255, 255, 0.16);
+}
+
+.playlist-tracklist--scrollable {
+  max-height: clamp(260px, 60vh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--playlist-track-scroll-thumb) transparent;
+}
+
+.playlist-tracklist--scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.playlist-tracklist--scrollable::-webkit-scrollbar-thumb {
+  background: var(--playlist-track-scroll-thumb);
+}
+
+.playlist-tracklist--scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.playlist-hero__controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.playlist-hero__play {
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.playlist-hero__play img {
+  width: 18px;
+  height: 18px;
+  filter: invert(1) brightness(2);
+}
+
+.playlist-hero__play:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.playlist-hero__play--active {
+  background: #ff5500;
+  border-color: #ff5500;
+}
+
+.playlist-hero__play:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.playlist-manage__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.playlist-manage__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.playlist-manage__danger {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  padding-top: 16px;
+}
+
+.playlist-manage__list {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--playlist-track-scroll-thumb) transparent;
+}
+
+.playlist-manage__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.playlist-manage__list::-webkit-scrollbar-thumb {
+  background: var(--playlist-track-scroll-thumb);
+}
+
+.playlist-manage__list::-webkit-scrollbar-track {
+  background: transparent;
+}

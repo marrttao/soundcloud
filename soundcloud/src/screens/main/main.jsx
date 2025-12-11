@@ -1,25 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Header from "../../components/Header.jsx";
 import Footer from "../../components/Footer.jsx";
 import SideBar from "./SideBar.jsx";
 import Choice from "./Choice.jsx";
-import { fetchProfile } from "../../api/profile";
 
 const Main = () => {
-  const [avatarUrl, setAvatarUrl] = useState(null);
-
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const data = await fetchProfile();
-        setAvatarUrl(data?.profile?.avatar_url);
-      } catch (err) {
-        console.error("Failed to load profile:", err);
-      }
-    };
-    loadProfile();
-  }, []);
-
   return (
     <div style={{
     display: "flex",
@@ -28,7 +13,7 @@ const Main = () => {
     background: "#141414",
     position: "relative"
   }}>
-    <Header avatarUrl={avatarUrl} />
+    <Header />
     <div style={{
       display: "flex",
       flex: 1,

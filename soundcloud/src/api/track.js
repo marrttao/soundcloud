@@ -99,3 +99,19 @@ export const unfollowArtist = async (artistId) => {
     headers: buildAuthHeaders()
   });
 };
+
+export const markTrackPlayed = async (trackId) => {
+  if (typeof trackId !== "number" || Number.isNaN(trackId)) {
+    return;
+  }
+  try {
+    await client.post(`/tracks/${trackId}/listen`, null, {
+      headers: buildAuthHeaders()
+    });
+  } catch (error) {
+    if (error?.response?.status === 401) {
+      throw error;
+    }
+    console.warn("Failed to record listening history", error);
+  }
+};
