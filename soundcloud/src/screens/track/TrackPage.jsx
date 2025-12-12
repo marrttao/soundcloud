@@ -251,7 +251,7 @@ const TrackPage = () => {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        padding: isMobile ? "72px 16px 96px" : "96px 24px 120px",
+        padding: isMobile ? "72px 16px 280px" : "96px 24px 240px",
         boxSizing: "border-box"
       }}>
         <div style={{
@@ -426,31 +426,34 @@ const TrackPage = () => {
                 flexWrap: "wrap"
               }}>
                 <div style={{
-                  flex: "1 1 240px",
+                  flex: isMobile ? "0 0 auto" : "1 1 240px",
+                  width: isMobile ? "100%" : undefined,
                   background: "#1a1a1a",
-                  padding: "14px 18px",
-                  borderRadius: 16
+                  padding: isMobile ? "8px 12px" : "14px 18px",
+                  borderRadius: isMobile ? 10 : 16
                 }}>
-                  <div style={{ color: "#8a8a8a", fontSize: isMobile ? 10 : 11, letterSpacing: 0.45, textTransform: "uppercase" }}>Duration</div>
-                  <div style={{ color: "#fff", fontSize: isMobile ? 14 : 16, fontWeight: 500 }}>{formatDuration(track.durationSeconds)}</div>
+                  <div style={{ color: "#8a8a8a", fontSize: isMobile ? 11 : 11, letterSpacing: 0.45, textTransform: "uppercase" }}>Duration</div>
+                  <div style={{ color: "#fff", fontSize: isMobile ? 15 : 16, fontWeight: 500 }}>{formatDuration(track.durationSeconds)}</div>
                 </div>
                 <div style={{
-                  flex: "1 1 240px",
+                  flex: isMobile ? "0 0 auto" : "1 1 240px",
+                  width: isMobile ? "100%" : undefined,
                   background: "#1a1a1a",
-                  padding: "14px 18px",
-                  borderRadius: 16
+                  padding: isMobile ? "8px 12px" : "14px 18px",
+                  borderRadius: isMobile ? 10 : 16
                 }}>
-                  <div style={{ color: "#8a8a8a", fontSize: isMobile ? 10 : 11, letterSpacing: 0.45, textTransform: "uppercase" }}>Plays</div>
-                  <div style={{ color: "#fff", fontSize: isMobile ? 14 : 16, fontWeight: 500 }}>{track.playsCount ?? 0}</div>
+                  <div style={{ color: "#8a8a8a", fontSize: isMobile ? 11 : 11, letterSpacing: 0.45, textTransform: "uppercase" }}>Plays</div>
+                  <div style={{ color: "#fff", fontSize: isMobile ? 15 : 16, fontWeight: 500 }}>{track.playsCount ?? 0}</div>
                 </div>
                 <div style={{
-                  flex: "1 1 240px",
+                  flex: isMobile ? "0 0 auto" : "1 1 240px",
+                  width: isMobile ? "100%" : undefined,
                   background: "#1a1a1a",
-                  padding: "14px 18px",
-                  borderRadius: 16
+                  padding: isMobile ? "8px 12px" : "14px 18px",
+                  borderRadius: isMobile ? 10 : 16
                 }}>
-                  <div style={{ color: "#8a8a8a", fontSize: isMobile ? 10 : 11, letterSpacing: 0.45, textTransform: "uppercase" }}>Likes</div>
-                  <div style={{ color: "#fff", fontSize: isMobile ? 14 : 16, fontWeight: 500 }}>{track.likesCount ?? 0}</div>
+                  <div style={{ color: "#8a8a8a", fontSize: isMobile ? 11 : 11, letterSpacing: 0.45, textTransform: "uppercase" }}>Likes</div>
+                  <div style={{ color: "#fff", fontSize: isMobile ? 15 : 16, fontWeight: 500 }}>{track.likesCount ?? 0}</div>
                 </div>
               </div>
               {track.description && (
@@ -473,6 +476,7 @@ const TrackPage = () => {
           )}
         </div>
       </main>
+      <div style={{ height: isMobile ? 220 : 100, flexShrink: 0 }} />
       <Footer />
       <AddToPlaylistModal
         open={showAddModal}

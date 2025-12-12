@@ -154,8 +154,10 @@ const Header = () => {
         display: "flex",
         alignItems: "center",
         position: "relative",
-        width: isMobile ? "100%" : "auto",
-        flex: isMobile ? 1 : 0,
+        width: "100%",
+        flex: isMobile ? "1 1 100%" : "1 1 360px",
+        minWidth: isMobile ? "100%" : "280px",
+        maxWidth: isMobile ? "100%" : "100%",
         ...styleOverrides
       }}
       ref={searchRef}
@@ -166,7 +168,8 @@ const Header = () => {
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         style={{
-          width: isMobile ? "100%" : "340px",
+          width: "100%",
+          maxWidth: "100%",
           padding: "8px 12px",
           borderRadius: "4px",
           border: "none",

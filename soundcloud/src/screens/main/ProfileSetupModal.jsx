@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { completeProfile, checkUsernameAvailability } from "../../api/profile";
+import { useCurrentProfile } from "../../context/ProfileContext";
 
 const defaultValues = {
   username: "",
@@ -28,6 +29,7 @@ const ProfileSetupModal = ({
   }, [mergedInitialValues]);
   const [status, setStatus] = useState({ message: "", type: "" });
   const [saving, setSaving] = useState(false);
+  const { refreshProfile } = useCurrentProfile();
 
   const handleChange = (field) => (event) =>
     setValues((prev) => ({ ...prev, [field]: event.target.value }));
@@ -78,6 +80,12 @@ const ProfileSetupModal = ({
 
       const payload = { ...values, username: trimmedUsername };
       await completeProfile(payload);
+      try {
+        await refreshProfile?.();
+      } catch (err) {
+        // don't block success path if context refresh fails
+        console.warn("Failed to refresh global profile from modal", err);
+      }
       setStatus({ message: "Profile saved", type: "success" });
       onSuccess?.(payload);
     } catch (error) {

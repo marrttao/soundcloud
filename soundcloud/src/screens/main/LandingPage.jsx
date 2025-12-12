@@ -799,20 +799,18 @@ const LandingPage = () => {
         setAuthMessageType("error");
         return;
       }
-
-      if (!username.trim()) {
-        setAuthMessage("Username is required.");
-        setAuthMessageType("error");
-        return;
-      }
     }
 
     setIsSubmitting(true);
     setAuthMessage("");
     setAuthMessageType("info");
     try {
-      const action = isSignIn ? signIn : signUp;
-      const response = await action(email, password);
+      let response;
+      if (isSignIn) {
+        response = await signIn(email, password);
+      } else {
+        response = await signUp(email, password);
+      }
       if (isSignIn) {
         if (response?.access_token) {
           storeAuthTokens(response.access_token, response.refresh_token ?? "");
@@ -831,38 +829,10 @@ const LandingPage = () => {
       }
 
       storeAuthTokens(response.access_token, response.refresh_token ?? "");
-
-      const trimmedUsername = username.trim();
-      const trimmedFullName = displayName.trim();
-
-      try {
-        await completeProfile({
-          username: trimmedUsername,
-          fullName: trimmedFullName,
-          avatarUrl: "",
-          bannerUrl: "",
-          bio: ""
-        });
-        setProfileDefaults({
-          username: trimmedUsername,
-          fullName: trimmedFullName,
-          avatarUrl: "",
-          bannerUrl: "",
-          bio: ""
-        });
-      } catch (profileError) {
-        setAuthMessage(
-          profileError?.response?.data ??
-          profileError?.message ??
-          "Failed to save username."
-        );
-        setAuthMessageType("error");
-        return;
-      }
-
       setAuthMessage("Check your inbox for a confirmation email.");
       setAuthMessageType("success");
       setModalType("");
+      // Open profile setup modal after signup so user can choose username/display name there
       setShowProfileSetup(true);
     } catch (error) {
       setAuthMessage(authErrorMessage(error));
@@ -1331,26 +1301,7 @@ const LandingPage = () => {
                 style={styles.inputField}
                 autoComplete="email"
               />
-              {isSignUp && (
-                <>
-                  <input
-                    type="text"
-                    placeholder="Display name"
-                    value={displayName}
-                    onChange={(event) => setDisplayName(event.target.value)}
-                    style={styles.inputField}
-                    autoComplete="name"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Username (public handle)"
-                    value={username}
-                    onChange={(event) => setUsername(event.target.value)}
-                    style={styles.inputField}
-                    autoComplete="username"
-                  />
-                </>
-              )}
+              {/* Username and display name are collected in profile setup modal after signup */}
               <input
                 type="password"
                 placeholder="Password"

@@ -30,7 +30,7 @@ const Profile = () => {
   const [showCreatePlaylistModal, setShowCreatePlaylistModal] = useState(false);
   const [lastFetchedKey, setLastFetchedKey] = useState(null);
   const [followBusy, setFollowBusy] = useState(false);
-  const { profile: currentUserProfile } = useCurrentProfile();
+  const { profile: currentUserProfile, refreshProfile: refreshGlobalProfile } = useCurrentProfile();
   const isMobile = useBreakpoint(768);
   const showSidebar = !isMobile;
   const headerOffset = isMobile ? 64 : 56;
@@ -293,6 +293,11 @@ const Profile = () => {
           onSuccess={async () => {
             setShowEditModal(false);
             await refreshProfile();
+            try {
+              await refreshGlobalProfile?.();
+            } catch (err) {
+              console.warn("Failed to refresh global profile", err);
+            }
           }}
         />
       )}

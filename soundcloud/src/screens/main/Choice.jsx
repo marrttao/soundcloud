@@ -333,7 +333,7 @@ const Choice = ({
         fontSize: isMobile ? '20px' : '24px',
         fontWeight: 'bold',
         margin: 0,
-        paddingLeft: isMobile ? 0 : '16px',
+        paddingLeft: 0,
         textAlign: isMobile ? 'center' : 'left'
       }}>{title}</p>
       <div style={{
@@ -372,29 +372,70 @@ const Choice = ({
           style={{
             display: 'flex',
             gap: isMobile ? '12px' : '16px',
-            paddingLeft: isMobile ? '8px' : '16px',
+            paddingLeft: isMobile ? '8px' : '0px',
             paddingRight: isMobile ? '8px' : '16px',
             overflowX: 'scroll',
             scrollBehavior: 'smooth',
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
-            scrollSnapType: isMobile ? 'x mandatory' : 'none'
+            scrollSnapType: isMobile ? 'x mandatory' : 'none',
+            justifyContent: !isMobile ? 'center' : 'flex-start'
           }}
           className="carousel-container"
         >
           {loading ? (
             <div style={{ color: '#bbb', fontSize: '14px' }}>Loading…</div>
           ) : hasItems ? (
-            items.map((item) => (
-              <Cover
-                key={`${item.type}-${item.id ?? 'unknown'}-${item.playedAt ?? 'na'}`}
-                imageUrl={item.imageUrl}
-                title={item.title}
-                subtitle={item.subtitle}
-                badge={item.badge}
-                onClick={handleItemAction(item)}
-              />
-            ))
+            (() => {
+              // 880px width, item 192px + 16px gap, 4 items visible (4*192+3*16=832, fits with padding)
+              const maxDesktopItems = isMobile ? items.length : 4;
+              const filled = items.slice(0, maxDesktopItems);
+              const emptyCount = isMobile ? 0 : Math.max(0, 4 - filled.length);
+              return [
+                ...filled.map((item) => (
+                  <Cover
+                    key={`${item.type}-${item.id ?? 'unknown'}-${item.playedAt ?? 'na'}`}
+                    imageUrl={item.imageUrl}
+                    title={item.title}
+                    subtitle={item.subtitle}
+                    badge={item.badge}
+                    onClick={handleItemAction(item)}
+                  />
+                )),
+                ...Array.from({ length: emptyCount }).map((_, idx) => (
+                  <div
+                    key={`empty-${idx}`}
+                    style={{
+                      width: 192,
+                      height: 208,
+                      borderRadius: 12,
+                      background: '#202020',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#444',
+                      fontSize: 13,
+                      fontWeight: 400,
+                      border: '1.5px dashed #292929',
+                      flexShrink: 0,
+                      opacity: 0.7,
+                      boxSizing: 'border-box',
+                      padding: '16px'
+                    }}
+                  >
+                    <div style={{
+                      width: 160,
+                      height: 160,
+                      borderRadius: 8,
+                      background: '#232323',
+                      marginBottom: 12,
+                    }} />
+                    <span style={{textAlign:'center',lineHeight:1.3}}>Not played yet</span>
+                  </div>
+                ))
+              ];
+            })()
           ) : (
             <div style={{ color: '#777', fontSize: '14px' }}>You have not played anything yet.</div>
           )}

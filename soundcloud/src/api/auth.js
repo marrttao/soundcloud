@@ -14,8 +14,11 @@ const parseError = (error) => {
   return error?.message ?? "Unexpected error";
 };
 
-export const signUp = async (email, password) => {
-  const response = await client.post("/auth/signup", { email, password });
+export const signUp = async (email, password, username = null, fullName = null) => {
+  const body = { email, password };
+  if (username != null) body.username = username;
+  if (fullName != null) body.fullName = fullName;
+  const response = await client.post("/auth/signup", body);
   return response.data;
 };
 

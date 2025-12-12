@@ -71,7 +71,79 @@ namespace queries.ApiForReact
 
             app.MapPost("/auth/signup", async (AuthRequest request, SupabaseService supabase, HttpContext httpContext) =>
             {
+                Console.WriteLine($"[DEBUG] Received signup: email={request.Email}, username={request.Username}, fullName={request.FullName}");
                 var response = await supabase.SignUpAsync(request.Email, request.Password);
+
+                // If signup returned an access token and the client provided username/fullName,
+                // try to upsert the initial profile so username/name are persisted immediately.
+                try
+                {
+                    var payload = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"[DEBUG] Signup response payload: {payload}");
+                    if (response.IsSuccessStatusCode && !string.IsNullOrWhiteSpace(payload))
+                    {
+                        using var doc = JsonDocument.Parse(payload);
+                        var accessToken = doc.RootElement.TryGetProperty("access_token", out var at) ? at.GetString() : null;
+                        Console.WriteLine($"[DEBUG] Signup response contained access_token: {!string.IsNullOrWhiteSpace(accessToken)}");
+                        if (!string.IsNullOrWhiteSpace(accessToken) && (!string.IsNullOrWhiteSpace(request.Username) || !string.IsNullOrWhiteSpace(request.FullName)))
+                        {
+                            Console.WriteLine("[DEBUG] Attempting profile upsert immediately after signup.");
+                            var upsert = new ProfileUpsertRequest
+                            {
+                                Username = request.Username ?? string.Empty,
+                                FullName = string.IsNullOrWhiteSpace(request.FullName) ? null : request.FullName,
+                                AvatarUrl = null,
+                                BannerUrl = null,
+                                Bio = null
+                            };
+
+                            try
+                            {
+                                await supabase.UpsertProfileAsync(upsert, accessToken);
+                                Console.WriteLine("[DEBUG] UpsertProfileAsync completed successfully during signup.");
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"[WARN] Failed to upsert profile during signup: {ex.Message}");
+                            }
+                        }
+                        else
+                        {
+                            // If there's no access_token but the signup response contained a user id,
+                            // try to upsert using the service key and that user id.
+                            if ((!string.IsNullOrWhiteSpace(request.Username) || !string.IsNullOrWhiteSpace(request.FullName)) &&
+                                doc.RootElement.TryGetProperty("user", out var userEl) &&
+                                userEl.ValueKind == JsonValueKind.Object &&
+                                userEl.TryGetProperty("id", out var idEl) &&
+                                Guid.TryParse(idEl.GetString(), out var newUserId))
+                            {
+                                Console.WriteLine($"[DEBUG] No access_token; attempting upsert with service key for user id={newUserId}");
+                                var upsert2 = new ProfileUpsertRequest
+                                {
+                                    Username = request.Username ?? string.Empty,
+                                    FullName = string.IsNullOrWhiteSpace(request.FullName) ? null : request.FullName,
+                                    AvatarUrl = null,
+                                    BannerUrl = null,
+                                    Bio = null
+                                };
+                                try
+                                {
+                                    await supabase.UpsertProfileWithServiceKeyAsync(newUserId, upsert2);
+                                    Console.WriteLine("[DEBUG] UpsertProfileWithServiceKeyAsync completed successfully during signup.");
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"[WARN] Failed to upsert profile with service key during signup: {ex.Message}");
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[WARN] Failed to process signup response: {ex.Message}");
+                }
+
                 return await ProxyHttpResponse(response, httpContext);
             });
 
@@ -772,5 +844,5 @@ namespace queries.ApiForReact
     }
 
     internal record CallRequest(string Service, string Method, JsonElement[]? Parameters);
-    internal record AuthRequest(string Email, string Password);
+    internal record AuthRequest(string Email, string Password, string? Username, string? FullName);
 }

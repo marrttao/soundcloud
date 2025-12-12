@@ -38,6 +38,15 @@ public class SupabaseService
         var tokenReader = new TokenReader.TokenReader();
         _url = tokenReader.GetSupabaseUrl();
         _key = tokenReader.GetSupabaseKey();
+        // Validate configuration early and provide a helpful error if missing
+        if (string.IsNullOrWhiteSpace(_url))
+        {
+            throw new InvalidOperationException("Supabase URL is not configured. Set the SUPABASE_URL or SupabaseUrl environment variable, or place it in services/tokens.json (BotSettings.SupabaseUrl).");
+        }
+        if (string.IsNullOrWhiteSpace(_key))
+        {
+            throw new InvalidOperationException("Supabase key is not configured. Set the SUPABASE_KEY or SupabaseKey environment variable, or place it in services/tokens.json (BotSettings.SupabaseKey).");
+        }
         _options = new SupabaseOptions
         {
             AutoConnectRealtime = true
@@ -489,6 +498,14 @@ public class SupabaseService
 
         var payload = BuildProfilePayload(user.Id, request);
         var response = await SendUpsertAsync(payload, accessToken);
+        return response;
+    }
+
+    // Upsert profile using the service key when we already know the target user id
+    public async Task<HttpResponseMessage> UpsertProfileWithServiceKeyAsync(Guid userId, ProfileUpsertRequest request)
+    {
+        var payload = BuildProfilePayload(userId, request);
+        var response = await SendUpsertAsync(payload, _key);
         return response;
     }
 

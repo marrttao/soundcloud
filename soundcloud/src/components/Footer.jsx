@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import likeIcon from "../assets/icons/like.png";
 import nextIcon from "../assets/icons/next.png";
 import prevIcon from "../assets/icons/prev.png";
@@ -109,6 +110,7 @@ const Footer = () => {
     }, [currentTrack]);
 
     const hasTrack = Boolean(currentTrack);
+    const navigate = useNavigate();
     const progressSeconds = hasTrack ? Math.min(progress ?? 0, duration ?? 0) : 0;
     const formattedProgress = formatTime(progressSeconds);
     const formattedDuration = formatTime(duration ?? 0);
@@ -317,11 +319,24 @@ const Footer = () => {
 
     const renderTrackInfo = (styleOverrides = {}) => (
         <div
+            role={hasTrack ? "link" : undefined}
+            tabIndex={hasTrack ? 0 : -1}
+            onKeyDown={(e) => {
+                if (!hasTrack) return;
+                if (e.key === "Enter" || e.key === " ") {
+                    navigate(`/tracks/${currentTrack?.id}`);
+                }
+            }}
+            onClick={() => {
+                if (!hasTrack) return;
+                navigate(`/tracks/${currentTrack?.id}`);
+            }}
             style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 12,
                 minWidth: 0,
+                cursor: hasTrack ? "pointer" : "default",
                 ...styleOverrides
             }}
         >
@@ -421,7 +436,8 @@ const Footer = () => {
                             height: 140,
                             padding: 0,
                             margin: 0,
-                            background: "transparent"
+                            // dynamic background: orange fill from bottom up based on volumePercent
+                            background: `linear-gradient(to top, #ff5500 ${volumePercent}%, rgba(255,255,255,0.12) ${volumePercent}%)`
                         }}
                     />
                 </div>
@@ -599,8 +615,9 @@ const Footer = () => {
             }
             .volume-slider::-webkit-slider-runnable-track {
                 width: 10px;
-                background: #ffffff;
+                background: rgba(255,255,255,0.12);
                 border-radius: 999px;
+                border: 1px solid rgba(255,255,255,0.04);
             }
             .volume-slider::-webkit-slider-thumb {
                 -webkit-appearance: none;
@@ -613,8 +630,9 @@ const Footer = () => {
             }
             .volume-slider::-moz-range-track {
                 width: 10px;
-                background: #ffffff;
+                background: rgba(255,255,255,0.12);
                 border-radius: 999px;
+                border: 1px solid rgba(255,255,255,0.04);
             }
             .volume-slider::-moz-range-thumb {
                 width: 16px;
