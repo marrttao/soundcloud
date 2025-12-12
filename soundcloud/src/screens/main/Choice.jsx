@@ -3,10 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import Cover from './Cover';
 import { fetchHomeSidebar } from '../../api/home';
 import { usePlayer } from '../../context/PlayerContext';
+import useBreakpoint from '../../hooks/useBreakpoint';
 
 const toCamelKey = (key) => key
   .replace(/[_-](\w)/g, (_, char) => char.toUpperCase())
   .replace(/^[A-Z]/, (char) => char.toLowerCase());
+
+const FALLBACK_AVATAR = 'https://i.imgur.com/6unG5jv.png';
 
 const deepCamel = (input) => {
   if (Array.isArray(input)) {
@@ -115,44 +118,130 @@ const normalizeHistoryEntry = (entry) => {
   return null;
 };
 
-const Choice = () => {
+const formatCount = (value = 0) => {
+  if (!Number.isFinite(value)) {
+    return '0';
+  }
+  if (value >= 1000000) {
+    return `${(value / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
+  }
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(1).replace(/\.0$/, '')}K`;
+  }
+  return value.toString();
+};
+
+const normalizeCustomTrack = (track = {}) => {
+  const id = track.trackId ?? track.id ?? track.track_id ?? null;
+  if (!id) {
+    return null;
+  }
+  const artistName = track.artist ?? track.artist_name ?? track.artistName ?? 'Unknown artist';
+  const cover = track.coverUrl ?? track.cover_url ?? track.artistAvatar ?? track.artist_avatar ?? FALLBACK_AVATAR;
+  const plays = coerceNumber(track.plays ?? track.playsCount ?? track.plays_count ?? track.likes ?? 0, 0);
+  return {
+    id,
+    type: 'track',
+    title: track.title ?? 'Untitled track',
+    subtitle: `${artistName} • ${formatCount(plays)} plays`,
+    badge: 'Liked Track',
+    imageUrl: cover,
+    descriptor: {
+      id,
+      title: track.title ?? 'Untitled track',
+      artistName,
+      artistId: track.artistId ?? track.artist_id ?? null,
+      durationSeconds: track.duration ?? track.durationSeconds ?? track.duration_seconds ?? null,
+      coverUrl: cover,
+      audioUrl: track.audioUrl ?? track.audio_url ?? null
+    }
+  };
+};
+
+const normalizeCustomArtist = (artist = {}) => {
+  const identifier = artist.username ?? artist.Username ?? artist.id ?? artist.Id ?? null;
+  if (!identifier) {
+    return null;
+  }
+  return {
+    id: identifier,
+    type: 'artist',
+    title: artist.displayName ?? artist.display_name ?? artist.username ?? artist.Username ?? 'Artist',
+    username: artist.username ?? artist.Username ?? artist.handle ?? null,
+    subtitle: `${formatCount(artist.followers ?? artist.Followers ?? 0)} followers • ${formatCount(artist.tracks ?? artist.Tracks ?? 0)} tracks`,
+    badge: 'Artist',
+    imageUrl: artist.avatarUrl ?? artist.avatar_url ?? FALLBACK_AVATAR
+  };
+};
+
+const buildCustomItems = (tracks = [], artists = []) => {
+  const artistItems = (artists ?? []).map(normalizeCustomArtist).filter(Boolean);
+  const trackItems = (tracks ?? []).map(normalizeCustomTrack).filter(Boolean);
+  return [...artistItems, ...trackItems];
+};
+
+const Choice = ({
+  title = 'Recently Played',
+  dataSource = 'home',
+  customTracks,
+  customArtists,
+  customLoading = false
+}) => {
   const carouselRef = React.useRef(null);
   const navigate = useNavigate();
   const player = usePlayer();
   const [items, setItems] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
+  const isMobile = useBreakpoint(640);
+  const usingCustomData = dataSource === 'custom';
 
   React.useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      setLoading(true);
-      try {
-        const rawData = await fetchHomeSidebar();
-        const data = deepCamel(rawData ?? {});
-        const history = Array.isArray(data?.history) ? data.history : [];
-        const normalized = history
-          .map(normalizeHistoryEntry)
-          .filter((item) => item && (item.id || item.descriptor?.id));
-        if (mounted) {
-          setItems(normalized);
+    if (!usingCustomData) {
+      let mounted = true;
+      const load = async () => {
+        setLoading(true);
+        try {
+          const rawData = await fetchHomeSidebar();
+          const data = deepCamel(rawData ?? {});
+          const history = Array.isArray(data?.history) ? data.history : [];
+          const normalized = history
+            .map(normalizeHistoryEntry)
+            .filter((item) => item && (item.id || item.descriptor?.id));
+          if (mounted) {
+            setItems(normalized);
+          }
+        } catch (error) {
+          console.error('Failed to load recently played items', error);
+          if (mounted) {
+            setItems([]);
+          }
+        } finally {
+          if (mounted) {
+            setLoading(false);
+          }
         }
-      } catch (error) {
-        console.error('Failed to load recently played items', error);
-        if (mounted) {
-          setItems([]);
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
+      };
 
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+      load();
+      return () => {
+        mounted = false;
+      };
+    }
+    return undefined;
+  }, [usingCustomData]);
+
+  React.useEffect(() => {
+    if (!usingCustomData) {
+      return;
+    }
+    if (customLoading) {
+      setLoading(true);
+      return;
+    }
+    const mapped = buildCustomItems(customTracks ?? [], customArtists ?? []);
+    setItems(mapped);
+    setLoading(false);
+  }, [usingCustomData, customTracks, customArtists, customLoading]);
 
   const queueDescriptors = React.useMemo(() => (
     items.filter((item) => item.type === 'track' && item.descriptor?.id).map((item) => ({
@@ -200,6 +289,13 @@ const Choice = () => {
     if (item.type === 'playlist' && item.id) {
       navigate(`/playlists/${item.id}`);
     }
+
+    if (item.type === 'artist') {
+      const username = item.username ?? item.id;
+      if (username) {
+        navigate(`/profile/${encodeURIComponent(username)}`);
+      }
+    }
   }, [navigate, player, queueDescriptors]);
 
   const scrollLeft = () => {
@@ -230,18 +326,19 @@ const Choice = () => {
       width: '100%',
       display: 'flex',
       flexDirection: 'column',
-      gap: '12px'
+      gap: isMobile ? '8px' : '12px'
     }}>
       <p style={{
         color: '#fff',
-        fontSize: '24px',
+        fontSize: isMobile ? '20px' : '24px',
         fontWeight: 'bold',
         margin: 0,
-        paddingLeft: '16px'
-      }}>Recently Played</p>
+        paddingLeft: isMobile ? 0 : '16px',
+        textAlign: isMobile ? 'center' : 'left'
+      }}>{title}</p>
       <div style={{
         width: '100%',
-        minHeight: '264px',
+        minHeight: isMobile ? '220px' : '264px',
         display: 'flex',
         alignItems: 'center',
         position: 'relative',
@@ -262,7 +359,8 @@ const Choice = () => {
             color: '#fff',
             cursor: hasItems ? 'pointer' : 'not-allowed',
             fontSize: '18px',
-            opacity: hasItems ? 1 : 0.4
+            opacity: hasItems ? 1 : 0.4,
+            display: isMobile ? 'none' : 'flex'
           }}
           type="button"
         >
@@ -273,13 +371,14 @@ const Choice = () => {
           ref={carouselRef}
           style={{
             display: 'flex',
-            gap: '16px',
-            paddingLeft: '16px',
-            paddingRight: '16px',
+            gap: isMobile ? '12px' : '16px',
+            paddingLeft: isMobile ? '8px' : '16px',
+            paddingRight: isMobile ? '8px' : '16px',
             overflowX: 'scroll',
             scrollBehavior: 'smooth',
             scrollbarWidth: 'none',
-            msOverflowStyle: 'none'
+            msOverflowStyle: 'none',
+            scrollSnapType: isMobile ? 'x mandatory' : 'none'
           }}
           className="carousel-container"
         >
@@ -316,7 +415,8 @@ const Choice = () => {
             color: '#fff',
             cursor: hasItems ? 'pointer' : 'not-allowed',
             fontSize: '18px',
-            opacity: hasItems ? 1 : 0.4
+            opacity: hasItems ? 1 : 0.4,
+            display: isMobile ? 'none' : 'flex'
           }}
           type="button"
         >

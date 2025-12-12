@@ -9,6 +9,7 @@ import repeatIcon from "../assets/icons/repeat.png";
 import subscribeIcon from "../assets/icons/subscribe.png";
 import { usePlayer } from "../context/PlayerContext";
 import AddToPlaylistModal from "./AddToPlaylistModal.jsx";
+import useBreakpoint from "../hooks/useBreakpoint";
 
 const formatTime = (seconds) => {
     if (!Number.isFinite(seconds) || seconds < 0) {
@@ -41,6 +42,7 @@ const Footer = () => {
         volume,
         setVolume
     } = usePlayer();
+    const isMobile = useBreakpoint(640);
 
     const [menuOpen, setMenuOpen] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -100,6 +102,12 @@ const Footer = () => {
         };
     }, [volumeOpen]);
 
+    useEffect(() => {
+        if (!currentTrack) {
+            setVolumeOpen(false);
+        }
+    }, [currentTrack]);
+
     const hasTrack = Boolean(currentTrack);
     const progressSeconds = hasTrack ? Math.min(progress ?? 0, duration ?? 0) : 0;
     const formattedProgress = formatTime(progressSeconds);
@@ -152,12 +160,6 @@ const Footer = () => {
         setShowAddModal(true);
         setMenuOpen(false);
     };
-
-    useEffect(() => {
-        if (!hasTrack) {
-            setVolumeOpen(false);
-        }
-    }, [hasTrack]);
 
     const handleVolumeChange = (event) => {
         const value = Number(event.target.value);
@@ -216,15 +218,363 @@ const Footer = () => {
         );
     }, [hasTrack, volume]);
 
+    const renderPlaybackControls = (styleOverrides = {}) => (
+        <div
+            style={{
+                display: "flex",
+                alignItems: "center",
+                gap: isMobile ? "16px" : "12px",
+                flexWrap: "nowrap",
+                ...styleOverrides
+            }}
+        >
+            <button
+                type="button"
+                onClick={previous}
+                disabled={!hasTrack}
+                style={{ background: "none", border: "none", padding: 4, cursor: hasTrack ? "pointer" : "not-allowed" }}
+            >
+                <img src={prevIcon} alt="Previous" style={{ width: 16, height: 16, filter: "invert(1) brightness(2)", opacity: hasTrack ? 1 : 0.4 }} />
+            </button>
+            <button
+                type="button"
+                onClick={togglePlay}
+                disabled={!hasTrack}
+                style={{ background: "none", border: "none", padding: 4, cursor: hasTrack ? "pointer" : "not-allowed" }}
+            >
+                <img src={isPlaying ? playIcon : pauseIcon} alt={isPlaying ? "Pause" : "Play"} style={{ width: 20, height: 20, filter: "invert(1) brightness(2)", opacity: hasTrack ? 1 : 0.4 }} />
+            </button>
+            <button
+                type="button"
+                onClick={next}
+                disabled={!hasTrack}
+                style={{ background: "none", border: "none", padding: 4, cursor: hasTrack ? "pointer" : "not-allowed" }}
+            >
+                <img src={nextIcon} alt="Next" style={{ width: 16, height: 16, filter: "invert(1) brightness(2)", opacity: hasTrack ? 1 : 0.4 }} />
+            </button>
+            <button
+                type="button"
+                onClick={toggleShuffle}
+                style={{ background: "none", border: "none", padding: 4, cursor: "pointer" }}
+            >
+                <img
+                    src={shuffleIcon}
+                    alt="Shuffle"
+                    style={{
+                        width: 16,
+                        height: 16,
+                        filter: shuffle ? "invert(44%) sepia(61%) saturate(3529%) hue-rotate(349deg) brightness(100%) contrast(101%)" : "invert(1) brightness(2)",
+                        opacity: hasTrack ? 1 : 0.4
+                    }}
+                />
+            </button>
+            <button
+                type="button"
+                onClick={cycleRepeat}
+                style={{ background: "none", border: "none", padding: 4, cursor: "pointer", position: "relative" }}
+            >
+                <img
+                    src={repeatIcon}
+                    alt="Repeat"
+                    style={{
+                        width: 16,
+                        height: 16,
+                        filter: repeatMode === "off" ? "invert(1) brightness(2)" : "invert(44%) sepia(61%) saturate(3529%) hue-rotate(349deg) brightness(100%) contrast(101%)",
+                        opacity: hasTrack ? 1 : 0.4
+                    }}
+                />
+                {repeatLabel && (
+                    <span style={{ position: "absolute", top: -6, right: -6, fontSize: 10, color: "#ff5500" }}>{repeatLabel}</span>
+                )}
+            </button>
+        </div>
+    );
+
+    const renderTimeline = (styleOverrides = {}) => (
+        <div
+            style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                minWidth: 160,
+                ...styleOverrides
+            }}
+        >
+            <span style={{ color: "#fff", fontSize: 12, width: 40, textAlign: "right" }}>{formattedProgress}</span>
+            <input
+                type="range"
+                min={0}
+                max={Math.max(duration ?? 0, progress ?? 0)}
+                step={0.5}
+                value={progressSeconds}
+                onChange={handleSeek}
+                disabled={!hasTrack}
+                style={{ flex: 1 }}
+            />
+            <span style={{ color: "#fff", fontSize: 12, width: 40 }}>{formattedDuration}</span>
+        </div>
+    );
+
+    const renderTrackInfo = (styleOverrides = {}) => (
+        <div
+            style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                minWidth: 0,
+                ...styleOverrides
+            }}
+        >
+            <div
+                style={{
+                    width: isMobile ? 48 : 56,
+                    height: isMobile ? 48 : 56,
+                    borderRadius: 10,
+                    background: "#262626",
+                    overflow: "hidden",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                }}
+            >
+                {artworkUrl ? (
+                    <img
+                        src={artworkUrl}
+                        alt={currentTrack?.title ?? "Artwork"}
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                ) : (
+                    <span style={{ color: "#777", fontSize: 18 }}>♪</span>
+                )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                <span style={{ color: "#fff", fontSize: 14, fontWeight: 600, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                    {hasTrack ? currentTrack.title : "Nothing playing"}
+                </span>
+                <span style={{ color: "#ccc", fontSize: 12, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{artistName}</span>
+            </div>
+        </div>
+    );
+
+    const renderVolumeControl = (styleOverrides = {}) => (
+        <div
+            ref={volumeRef}
+            style={{
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                ...styleOverrides
+            }}
+        >
+            <button
+                type="button"
+                onClick={toggleVolumePanel}
+                disabled={!hasTrack}
+                style={{
+                    background: "#242424",
+                    border: "1px solid #444",
+                    borderRadius: 999,
+                    padding: "6px 12px",
+                    color: "#fff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minWidth: 40,
+                    cursor: hasTrack ? "pointer" : "not-allowed",
+                    opacity: hasTrack ? 1 : 0.4
+                }}
+                aria-haspopup="true"
+                aria-expanded={volumeOpen}
+                aria-label={`Volume ${volumePercent}%`}
+            >
+                {volumeIcon}
+            </button>
+            {volumeOpen && hasTrack && (
+                <div
+                    style={{
+                        position: "absolute",
+                        bottom: "calc(100% + 10px)",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        background: "rgba(24,24,24,0.9)",
+                        borderRadius: 999,
+                        padding: "30px 14px",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        boxShadow: "0 18px 30px rgba(0,0,0,0.4)"
+                    }}
+                >
+                    <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={1 - (volume ?? 1)}
+                        onChange={handleVolumeChange}
+                        aria-label="Volume"
+                        orient="vertical"
+                        className="volume-slider"
+                        style={{
+                            writingMode: "vertical-rl",
+                            WebkitAppearance: "slider-vertical",
+                            width: 10,
+                            height: 140,
+                            padding: 0,
+                            margin: 0,
+                            background: "transparent"
+                        }}
+                    />
+                </div>
+            )}
+        </div>
+    );
+
+    const renderActionButtons = (styleOverrides = {}) => (
+        <div
+            ref={menuRef}
+            style={{
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                gap: isMobile ? 16 : 12,
+                ...styleOverrides
+            }}
+        >
+            <button
+                type="button"
+                onClick={handleToggleLike}
+                disabled={!hasTrack}
+                style={{ background: "none", border: "none", padding: 4, cursor: hasTrack ? "pointer" : "not-allowed" }}
+            >
+                <img
+                    src={likeIcon}
+                    alt="Like"
+                    style={{
+                        width: 16,
+                        height: 16,
+                        filter: currentTrack?.isLiked ? "invert(44%) sepia(61%) saturate(3529%) hue-rotate(349deg) brightness(100%) contrast(101%)" : "invert(1) brightness(2)",
+                        opacity: hasTrack ? 1 : 0.4
+                    }}
+                />
+            </button>
+            <button
+                type="button"
+                onClick={handleToggleFollow}
+                disabled={!hasTrack}
+                style={{ background: "none", border: "none", padding: 4, cursor: hasTrack ? "pointer" : "not-allowed" }}
+            >
+                <img
+                    src={subscribeIcon}
+                    alt="Follow"
+                    style={{
+                        width: 16,
+                        height: 16,
+                        filter: currentTrack?.isFollowing ? "invert(44%) sepia(61%) saturate(3529%) hue-rotate(349deg) brightness(100%) contrast(101%)" : "invert(1) brightness(2)",
+                        opacity: hasTrack ? 1 : 0.4
+                    }}
+                />
+            </button>
+            <button
+                type="button"
+                onClick={toggleMenu}
+                disabled={!hasTrack}
+                style={{
+                    background: "none",
+                    border: "none",
+                    padding: 4,
+                    cursor: hasTrack ? "pointer" : "not-allowed",
+                    color: "#fff",
+                    fontSize: 18,
+                    opacity: hasTrack ? 1 : 0.4,
+                    lineHeight: 1
+                }}
+                aria-haspopup="true"
+                aria-expanded={menuOpen}
+            >
+                ⋮
+            </button>
+            {menuOpen && hasTrack && (
+                <div
+                    style={{
+                        position: "absolute",
+                        bottom: "calc(100% + 8px)",
+                        right: 0,
+                        background: "#1f1f1f",
+                        border: "1px solid #303030",
+                        borderRadius: 10,
+                        padding: 8,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 4,
+                        minWidth: 180,
+                        boxShadow: "0 12px 32px rgba(0,0,0,0.35)"
+                    }}
+                >
+                    <button
+                        type="button"
+                        onClick={openAddToPlaylist}
+                        style={{
+                            background: "none",
+                            border: "none",
+                            color: "#f5f5f5",
+                            textAlign: "left",
+                            padding: "10px 12px",
+                            borderRadius: 8,
+                            cursor: "pointer",
+                            fontSize: 14
+                        }}
+                    >
+                        Add to playlist
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+
+    const desktopContent = (
+        <div
+            style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                width: "100%",
+                maxWidth: 1240,
+                gap: 28,
+                margin: "0 auto"
+            }}
+        >
+            {renderTrackInfo({ flex: "0 0 auto" })}
+            {renderPlaybackControls({ flex: "0 0 auto" })}
+            {renderTimeline({ flex: 1 })}
+            {renderVolumeControl()}
+            {renderActionButtons()}
+        </div>
+    );
+
+    const mobileContent = (
+        <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                {renderTrackInfo({ flex: 1 })}
+                {renderActionButtons({ marginLeft: "auto" })}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                {renderPlaybackControls({ flex: 1, justifyContent: "space-between" })}
+                {renderVolumeControl({ flex: "0 0 auto" })}
+            </div>
+            {renderTimeline({ width: "100%" })}
+        </div>
+    );
+
     return (
         <>
         <footer
             style={{
                 background: "#181818",
-                padding: "0 32px",
-                height: "72px",
+                padding: isMobile ? "12px 16px 18px" : "0 32px",
+                height: isMobile ? "auto" : "72px",
                 display: "flex",
                 alignItems: "center",
+                justifyContent: "center",
                 position: "fixed",
                 bottom: 0,
                 left: 0,
@@ -233,264 +583,7 @@ const Footer = () => {
                 borderTop: "1px solid #222"
             }}
         >
-            <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "1240px",
-                gap: "32px",
-                margin: "0 auto"
-            }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <button
-                        type="button"
-                        onClick={previous}
-                        disabled={!hasTrack}
-                        style={{ background: "none", border: "none", padding: 4, cursor: hasTrack ? "pointer" : "not-allowed" }}
-                    >
-                        <img src={prevIcon} alt="Previous" style={{ width: 16, height: 16, filter: "invert(1) brightness(2)", opacity: hasTrack ? 1 : 0.4 }} />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={togglePlay}
-                        disabled={!hasTrack}
-                        style={{ background: "none", border: "none", padding: 4, cursor: hasTrack ? "pointer" : "not-allowed" }}
-                    >
-                        <img src={isPlaying ? playIcon : pauseIcon} alt={isPlaying ? "Pause" : "Play"} style={{ width: 18, height: 18, filter: "invert(1) brightness(2)", opacity: hasTrack ? 1 : 0.4 }} />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={next}
-                        disabled={!hasTrack}
-                        style={{ background: "none", border: "none", padding: 4, cursor: hasTrack ? "pointer" : "not-allowed" }}
-                    >
-                        <img src={nextIcon} alt="Next" style={{ width: 16, height: 16, filter: "invert(1) brightness(2)", opacity: hasTrack ? 1 : 0.4 }} />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={toggleShuffle}
-                        style={{ background: "none", border: "none", padding: 4, cursor: "pointer" }}
-                    >
-                        <img
-                            src={shuffleIcon}
-                            alt="Shuffle"
-                            style={{
-                                width: 16,
-                                height: 16,
-                                filter: shuffle ? "invert(44%) sepia(61%) saturate(3529%) hue-rotate(349deg) brightness(100%) contrast(101%)" : "invert(1) brightness(2)",
-                                opacity: hasTrack ? 1 : 0.4
-                            }}
-                        />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={cycleRepeat}
-                        style={{ background: "none", border: "none", padding: 4, cursor: "pointer", position: "relative" }}
-                    >
-                        <img
-                            src={repeatIcon}
-                            alt="Repeat"
-                            style={{
-                                width: 16,
-                                height: 16,
-                                filter: repeatMode === "off" ? "invert(1) brightness(2)" : "invert(44%) sepia(61%) saturate(3529%) hue-rotate(349deg) brightness(100%) contrast(101%)",
-                                opacity: hasTrack ? 1 : 0.4
-                            }}
-                        />
-                        {repeatLabel && (
-                            <span style={{ position: "absolute", top: -6, right: -6, fontSize: 10, color: "#ff5500" }}>{repeatLabel}</span>
-                        )}
-                    </button>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
-                    <span style={{ color: "#fff", fontSize: 13, width: 42, textAlign: "right" }}>{formattedProgress}</span>
-                    <input
-                        type="range"
-                        min={0}
-                        max={Math.max(duration ?? 0, progress ?? 0)}
-                        step={0.5}
-                        value={progressSeconds}
-                        onChange={handleSeek}
-                        disabled={!hasTrack}
-                        style={{ flex: 1 }}
-                    />
-                    <span style={{ color: "#fff", fontSize: 13, width: 42 }}>{formattedDuration}</span>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: "200px" }}>
-                    <div style={{ width: 42, height: 42, borderRadius: 8, background: "#262626", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        {artworkUrl ? (
-                            <img
-                                src={artworkUrl}
-                                alt={currentTrack?.title ?? "Artwork"}
-                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                            />
-                        ) : (
-                            <span style={{ color: "#777", fontSize: 18 }}>♪</span>
-                        )}
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                        <span style={{ color: "#fff", fontSize: 14, fontWeight: 600 }}>
-                            {hasTrack ? currentTrack.title : "Nothing playing"}
-                        </span>
-                        <span style={{ color: "#ccc", fontSize: 12 }}>{artistName}</span>
-                    </div>
-                </div>
-
-                <div style={{ position: "relative" }} ref={volumeRef}>
-                    <button
-                        type="button"
-                        onClick={toggleVolumePanel}
-                        disabled={!hasTrack}
-                        style={{
-                            background: "#242424",
-                            border: "1px solid #444",
-                            borderRadius: 999,
-                            padding: "6px 12px",
-                            color: "#fff",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            minWidth: 40,
-                            cursor: hasTrack ? "pointer" : "not-allowed",
-                            opacity: hasTrack ? 1 : 0.4
-                        }}
-                        aria-haspopup="true"
-                        aria-expanded={volumeOpen}
-                        aria-label={`Volume ${volumePercent}%`}
-                    >
-                        {volumeIcon}
-                    </button>
-                    {volumeOpen && hasTrack && (
-                        <div
-                            style={{
-                                position: "absolute",
-                                bottom: "calc(100% + 10px)",
-                                left: "50%",
-                                transform: "translateX(-50%)",
-                                background: "rgba(24,24,24,0.9)",
-                                borderRadius: 999,
-                                padding: "30px 14px",
-                                border: "1px solid rgba(255,255,255,0.08)",
-                                boxShadow: "0 18px 30px rgba(0,0,0,0.4)"
-                            }}
-                        >
-                            <input
-                                type="range"
-                                min={0}
-                                max={1}
-                                step={0.01}
-                                value={1 - (volume ?? 1)}
-                                onChange={handleVolumeChange}
-                                aria-label="Volume"
-                                orient="vertical"
-                                className="volume-slider"
-                                style={{
-                                    writingMode: "vertical-rl",
-                                    WebkitAppearance: "slider-vertical",
-                                    width: 10,
-                                    height: 140,
-                                    padding: 0,
-                                    margin: 0,
-                                    background: "transparent"
-                                }}
-                            />
-                        </div>
-                    )}
-                </div>
-
-                <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "12px" }} ref={menuRef}>
-                    <button
-                        type="button"
-                        onClick={handleToggleLike}
-                        disabled={!hasTrack}
-                        style={{ background: "none", border: "none", padding: 4, cursor: hasTrack ? "pointer" : "not-allowed" }}
-                    >
-                        <img
-                            src={likeIcon}
-                            alt="Like"
-                            style={{
-                                width: 16,
-                                height: 16,
-                                filter: currentTrack?.isLiked ? "invert(44%) sepia(61%) saturate(3529%) hue-rotate(349deg) brightness(100%) contrast(101%)" : "invert(1) brightness(2)",
-                                opacity: hasTrack ? 1 : 0.4
-                            }}
-                        />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleToggleFollow}
-                        disabled={!hasTrack}
-                        style={{ background: "none", border: "none", padding: 4, cursor: hasTrack ? "pointer" : "not-allowed" }}
-                    >
-                        <img
-                            src={subscribeIcon}
-                            alt="Follow"
-                            style={{
-                                width: 16,
-                                height: 16,
-                                filter: currentTrack?.isFollowing ? "invert(44%) sepia(61%) saturate(3529%) hue-rotate(349deg) brightness(100%) contrast(101%)" : "invert(1) brightness(2)",
-                                opacity: hasTrack ? 1 : 0.4
-                            }}
-                        />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={toggleMenu}
-                        disabled={!hasTrack}
-                        style={{
-                            background: "none",
-                            border: "none",
-                            padding: 4,
-                            cursor: hasTrack ? "pointer" : "not-allowed",
-                            color: "#fff",
-                            fontSize: 18,
-                            opacity: hasTrack ? 1 : 0.4,
-                            lineHeight: 1
-                        }}
-                        aria-haspopup="true"
-                        aria-expanded={menuOpen}
-                    >
-                        ⋮
-                    </button>
-                    {menuOpen && hasTrack && (
-                        <div
-                            style={{
-                                position: "absolute",
-                                bottom: "calc(100% + 8px)",
-                                right: 0,
-                                background: "#1f1f1f",
-                                border: "1px solid #303030",
-                                borderRadius: 10,
-                                padding: 8,
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 4,
-                                minWidth: 180,
-                                boxShadow: "0 12px 32px rgba(0,0,0,0.35)"
-                            }}
-                        >
-                            <button
-                                type="button"
-                                onClick={openAddToPlaylist}
-                                style={{
-                                    background: "none",
-                                    border: "none",
-                                    color: "#f5f5f5",
-                                    textAlign: "left",
-                                    padding: "10px 12px",
-                                    borderRadius: 8,
-                                    cursor: "pointer",
-                                    fontSize: 14
-                                }}
-                            >
-                                Add to playlist
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </div>
+            {isMobile ? mobileContent : desktopContent}
             <AddToPlaylistModal
                 open={showAddModal && hasTrack}
                 trackId={currentTrack?.id}

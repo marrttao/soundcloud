@@ -5,6 +5,7 @@ import Footer from "../../components/Footer.jsx";
 import { fetchTrack, likeTrack, unlikeTrack, followArtist, unfollowArtist } from "../../api/track";
 import AddToPlaylistModal from "../../components/AddToPlaylistModal.jsx";
 import { usePlayer } from "../../context/PlayerContext";
+import useBreakpoint from "../../hooks/useBreakpoint";
 
 const formatDuration = (seconds) => {
   if (!Number.isFinite(seconds) || seconds <= 0) {
@@ -40,6 +41,8 @@ const TrackPage = () => {
     likeInFlight,
     followInFlight
   } = usePlayer();
+
+  const isMobile = useBreakpoint(768);
 
   useEffect(() => {
     if (!Number.isFinite(numericId)) {
@@ -248,10 +251,16 @@ const TrackPage = () => {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        padding: "88px 16px 120px",
+        padding: isMobile ? "72px 16px 96px" : "96px 24px 120px",
         boxSizing: "border-box"
       }}>
-        <div style={{ width: "100%", maxWidth: 960 }}>
+        <div style={{
+          width: "100%",
+          maxWidth: isMobile ? 640 : 960,
+          display: "flex",
+          flexDirection: "column",
+          gap: isMobile ? 20 : 24
+        }}>
           {loading && (
             <div style={{ color: "#bbb" }}>Loading track…</div>
           )}
@@ -259,12 +268,19 @@ const TrackPage = () => {
             <div style={{ color: "#ff8a8a", marginBottom: 16 }}>{error}</div>
           )}
           {!loading && !error && track && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 20 : 24 }}>
+              <div style={{
+                display: "flex",
+                flexDirection: isMobile ? "column" : "row",
+                alignItems: isMobile ? "flex-start" : "center",
+                gap: isMobile ? 20 : 24,
+                width: "100%"
+              }}>
                 <div style={{
-                  width: 168,
-                  height: 168,
-                  borderRadius: 0,
+                  width: isMobile ? "100%" : 200,
+                  maxWidth: isMobile ? "100%" : 220,
+                  aspectRatio: "1 / 1",
+                  borderRadius: 16,
                   background: "#1f1f1f",
                   display: "flex",
                   alignItems: "center",
@@ -284,9 +300,21 @@ const TrackPage = () => {
                     <span>♪</span>
                   )}
                 </div>
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: isMobile ? 20 : 16,
+                  width: "100%"
+                }}>
                   <div>
-                    <h1 style={{ margin: 0, color: "#fff", fontSize: 32 }}>{track.title}</h1>
+                    <h1 style={{
+                      margin: 0,
+                      color: "#fff",
+                      fontSize: isMobile ? 26 : 32,
+                      lineHeight: 1.2,
+                      wordBreak: "break-word"
+                    }}>{track.title}</h1>
                     <button
                       type="button"
                       onClick={handleOpenArtistProfile}
@@ -307,7 +335,12 @@ const TrackPage = () => {
                       {artistDisplayName || "Unknown artist"}
                     </button>
                   </div>
-                  <div style={{ display: "flex", gap: 12 }}>
+                  <div style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 12,
+                    width: "100%"
+                  }}>
                     <button
                       type="button"
                       onClick={handlePlay}
@@ -315,10 +348,13 @@ const TrackPage = () => {
                         background: "#ff5500",
                         color: "#fff",
                         border: "none",
-                        borderRadius: 0,
-                        padding: "10px 28px",
+                        borderRadius: 999,
+                        padding: isMobile ? "12px 24px" : "10px 28px",
                         fontWeight: 600,
-                        cursor: "pointer"
+                        cursor: "pointer",
+                        flex: isMobile ? "1 1 100%" : "0 0 auto",
+                        minWidth: isMobile ? "100%" : "auto",
+                        textAlign: "center"
                       }}
                     >
                       {isTrackPlaying ? "Pause" : isCurrent ? "Resume" : "Play"}
@@ -331,10 +367,13 @@ const TrackPage = () => {
                         background: "#232323",
                         color: track.isLiked ? "#ff5500" : "#fff",
                         border: "1px solid #2f2f2f",
-                        borderRadius: 0,
-                        padding: "10px 20px",
+                        borderRadius: 999,
+                        padding: isMobile ? "12px 16px" : "10px 20px",
                         fontWeight: 600,
-                        cursor: effectiveLikeLoading ? "wait" : "pointer"
+                        cursor: effectiveLikeLoading ? "wait" : "pointer",
+                        flex: isMobile ? "1 1 calc(50% - 12px)" : "0 0 auto",
+                        minWidth: isMobile ? "calc(50% - 12px)" : "auto",
+                        textAlign: "center"
                       }}
                     >
                       {track.isLiked ? "Unlike" : "Like"}
@@ -347,10 +386,13 @@ const TrackPage = () => {
                         background: "#232323",
                         color: track.isFollowing ? "#ff5500" : "#fff",
                         border: "1px solid #2f2f2f",
-                        borderRadius: 0,
-                        padding: "10px 20px",
+                        borderRadius: 999,
+                        padding: isMobile ? "12px 16px" : "10px 20px",
                         fontWeight: 600,
-                        cursor: effectiveFollowLoading ? "wait" : "pointer"
+                        cursor: effectiveFollowLoading ? "wait" : "pointer",
+                        flex: isMobile ? "1 1 calc(50% - 12px)" : "0 0 auto",
+                        minWidth: isMobile ? "calc(50% - 12px)" : "auto",
+                        textAlign: "center"
                       }}
                     >
                       {track.isFollowing ? "Following" : "Follow"}
@@ -362,10 +404,13 @@ const TrackPage = () => {
                         background: "#232323",
                         color: "#fff",
                         border: "1px solid #2f2f2f",
-                        borderRadius: 0,
-                        padding: "10px 20px",
+                        borderRadius: 999,
+                        padding: isMobile ? "12px 16px" : "10px 20px",
                         fontWeight: 600,
-                        cursor: "pointer"
+                        cursor: "pointer",
+                        flex: isMobile ? "1 1 calc(50% - 12px)" : "0 0 auto",
+                        minWidth: isMobile ? "calc(50% - 12px)" : "auto",
+                        textAlign: "center"
                       }}
                     >
                       Add to playlist
@@ -374,22 +419,46 @@ const TrackPage = () => {
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-                <div style={{ flex: "1 1 240px", background: "#1a1a1a", padding: "16px 20px", borderRadius: 0 }}>
-                  <div style={{ color: "#888", fontSize: 12, letterSpacing: 0.6 }}>Duration</div>
-                  <div style={{ color: "#fff", fontSize: 20, fontWeight: 600 }}>{formatDuration(track.durationSeconds)}</div>
+              <div style={{
+                display: "flex",
+                flexDirection: isMobile ? "column" : "row",
+                gap: isMobile ? 12 : 24,
+                flexWrap: "wrap"
+              }}>
+                <div style={{
+                  flex: "1 1 240px",
+                  background: "#1a1a1a",
+                  padding: "14px 18px",
+                  borderRadius: 16
+                }}>
+                  <div style={{ color: "#8a8a8a", fontSize: isMobile ? 10 : 11, letterSpacing: 0.45, textTransform: "uppercase" }}>Duration</div>
+                  <div style={{ color: "#fff", fontSize: isMobile ? 14 : 16, fontWeight: 500 }}>{formatDuration(track.durationSeconds)}</div>
                 </div>
-                <div style={{ flex: "1 1 240px", background: "#1a1a1a", padding: "16px 20px", borderRadius: 0 }}>
-                  <div style={{ color: "#888", fontSize: 12, letterSpacing: 0.6 }}>Plays</div>
-                  <div style={{ color: "#fff", fontSize: 20, fontWeight: 600 }}>{track.playsCount ?? 0}</div>
+                <div style={{
+                  flex: "1 1 240px",
+                  background: "#1a1a1a",
+                  padding: "14px 18px",
+                  borderRadius: 16
+                }}>
+                  <div style={{ color: "#8a8a8a", fontSize: isMobile ? 10 : 11, letterSpacing: 0.45, textTransform: "uppercase" }}>Plays</div>
+                  <div style={{ color: "#fff", fontSize: isMobile ? 14 : 16, fontWeight: 500 }}>{track.playsCount ?? 0}</div>
                 </div>
-                <div style={{ flex: "1 1 240px", background: "#1a1a1a", padding: "16px 20px", borderRadius: 0 }}>
-                  <div style={{ color: "#888", fontSize: 12, letterSpacing: 0.6 }}>Likes</div>
-                  <div style={{ color: "#fff", fontSize: 20, fontWeight: 600 }}>{track.likesCount ?? 0}</div>
+                <div style={{
+                  flex: "1 1 240px",
+                  background: "#1a1a1a",
+                  padding: "14px 18px",
+                  borderRadius: 16
+                }}>
+                  <div style={{ color: "#8a8a8a", fontSize: isMobile ? 10 : 11, letterSpacing: 0.45, textTransform: "uppercase" }}>Likes</div>
+                  <div style={{ color: "#fff", fontSize: isMobile ? 14 : 16, fontWeight: 500 }}>{track.likesCount ?? 0}</div>
                 </div>
               </div>
               {track.description && (
-                <div style={{ background: "#1a1a1a", padding: "20px", borderRadius: 0 }}>
+                <div style={{
+                  background: "#1a1a1a",
+                  padding: "20px",
+                  borderRadius: 16
+                }}>
                   <div style={{ color: "#888", fontSize: 12, letterSpacing: 0.6, marginBottom: 8 }}>Description</div>
                   <p style={{ color: "#ddd", lineHeight: 1.6, margin: 0 }}>{track.description}</p>
                 </div>

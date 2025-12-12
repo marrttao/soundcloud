@@ -11,6 +11,8 @@ import UserTracks from "./UserTracks.jsx";
 import UserPlaylists from "./UserPlaylists.jsx";
 import { useCurrentProfile } from "../../context/ProfileContext";
 import { followArtist, unfollowArtist } from "../../api/track";
+import Choice from "../main/Choice.jsx";
+import useBreakpoint from "../../hooks/useBreakpoint";
 
 const Profile = () => {
   const { username } = useParams();
@@ -29,6 +31,9 @@ const Profile = () => {
   const [lastFetchedKey, setLastFetchedKey] = useState(null);
   const [followBusy, setFollowBusy] = useState(false);
   const { profile: currentUserProfile } = useCurrentProfile();
+  const isMobile = useBreakpoint(768);
+  const showSidebar = !isMobile;
+  const headerOffset = isMobile ? 64 : 56;
 
   useEffect(() => {
     if (!username) {
@@ -205,18 +210,19 @@ const Profile = () => {
       minHeight: "100vh",
       background: "#141414",
       display: "flex",
-      flexDirection: "column"
+      flexDirection: "column",
+      overflowX: "hidden"
     }}>
       <Header />
       <div style={{
-        marginTop: 56,
+        marginTop: headerOffset,
         flex: 1,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        padding: "28px 16px",
+        padding: isMobile ? "20px 16px 120px" : "28px 16px",
         boxSizing: "border-box",
-        gap: 32
+        gap: isMobile ? 24 : 32
       }}>
         {loading && !profileData && (
           <div style={{ color: "#ddd", fontSize: 14 }}>Loading profile…</div>
@@ -236,19 +242,38 @@ const Profile = () => {
             isFollowing={isFollowing}
           />
         </div>
-        <div style={{ width: "100%", maxWidth: 1240, display: "flex", alignItems: "flex-start", gap: 32 }}>
-          <div style={{ width: "100%", maxWidth: 880, flexShrink: 0 }}>
+        <div style={{
+          width: "100%",
+          maxWidth: 1240,
+          display: "flex",
+          alignItems: "flex-start",
+          gap: isMobile ? 24 : 32,
+          flexDirection: isMobile ? "column" : "row"
+        }}>
+          <div style={{ width: "100%", maxWidth: showSidebar ? 880 : "100%", flexShrink: 0 }}>
             {renderMainContent()}
           </div>
-          <div style={{ width: 360, flexShrink: 0 }}>
-            <SideBar
-              stats={profileData?.stats}
-              likes={profileData?.likes}
-              following={profileData?.following}
-              loading={loading}
-              profileRouteBase={username ? `/profile/${encodeURIComponent(username)}` : "/profile"}
-            />
-          </div>
+          {showSidebar ? (
+            <div style={{ width: 360, flexShrink: 0 }}>
+              <SideBar
+                stats={profileData?.stats}
+                likes={profileData?.likes}
+                following={profileData?.following}
+                loading={loading}
+                profileRouteBase={username ? `/profile/${encodeURIComponent(username)}` : "/profile"}
+              />
+            </div>
+          ) : (
+            <div style={{ width: "100%" }}>
+              <Choice
+                title="Artists & tracks you might like"
+                dataSource="custom"
+                customTracks={profileData?.likes}
+                customArtists={profileData?.following}
+                customLoading={loading}
+              />
+            </div>
+          )}
         </div>
       </div>
       <Footer />

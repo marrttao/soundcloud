@@ -497,12 +497,6 @@ const PlaylistPage = () => {
   );
   const isPlaylistPlaying = isCurrentTrackInPlaylist && isPlaying;
 
-  const heroBackground = useMemo(() => ({
-    background: "#101010",
-    border: "1px solid #1f1f1f",
-    borderRadius: 0
-  }), []);
-
   const handlePlayAll = async () => {
     if (isCurrentTrackInPlaylist) {
       try {
@@ -596,22 +590,10 @@ const PlaylistPage = () => {
   };
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#141414",
-      display: "flex",
-      flexDirection: "column"
-    }}>
+    <div className="playlist-page">
       <Header />
-      <main style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        padding: "88px 16px 120px",
-        boxSizing: "border-box"
-      }}>
-        <div style={{ width: "100%", maxWidth: 1080 }}>
+      <main className="playlist-page__main">
+        <div className="playlist-page__container">
           {loading && (
             <div style={{ color: "#bbb" }}>Loading playlist…</div>
           )}
@@ -619,20 +601,20 @@ const PlaylistPage = () => {
             <div style={{ color: "#ff8a8a", marginBottom: 16 }}>{error}</div>
           )}
           {!loading && !error && playlist && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-              <section style={{ ...heroBackground, padding: "32px 36px", color: "#e6e6e6", display: "flex", gap: 32, alignItems: "flex-start" }}>
-                <div style={{ width: 220, height: 220, background: "#0d0d0d", border: "1px solid #222", borderRadius: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div className="playlist-layout">
+              <section className="playlist-hero">
+                <div className="playlist-hero__art">
                   <img
                     src={playlistCover}
                     alt="Playlist cover"
                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
                 </div>
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
+                <div className="playlist-hero__meta">
                   <div>
-                    <div style={{ fontSize: 12, letterSpacing: 3, textTransform: "uppercase", color: "#8a8a8a" }}>Playlist</div>
-                    <h1 style={{ margin: "8px 0 12px", fontSize: 36, fontWeight: 600, color: "#f5f5f5" }}>{playlistTitle}</h1>
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", color: "#bdbdbd", fontSize: 14 }}>
+                    <div className="playlist-hero__label">Playlist</div>
+                    <h1 className="playlist-hero__title">{playlistTitle}</h1>
+                    <div className="playlist-hero__stats">
                       <span>{playlist.trackCount ?? tracks.length} tracks</span>
                       <span>•</span>
                       <span>{formatRuntime(totalDurationSeconds)}</span>
@@ -645,14 +627,14 @@ const PlaylistPage = () => {
                       {playlistIsPrivate && (
                         <>
                           <span>•</span>
-                          <span style={{ fontWeight: 600 }}>Private</span>
+                          <span className="playlist-hero__private">Private</span>
                         </>
                       )}
                     </div>
                   </div>
                   {owner && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <div style={{ width: 48, height: 48, background: "#0d0d0d", border: "1px solid #222", borderRadius: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div className="playlist-owner">
+                      <div className="playlist-owner__avatar">
                         <img
                           src={owner.avatar_url || FALLBACK_PLAYLIST_COVER}
                           alt="Owner avatar"
@@ -661,7 +643,7 @@ const PlaylistPage = () => {
                       </div>
                       <button
                         type="button"
-                        style={{ background: "none", border: "none", padding: 0, color: "#f5f5f5", fontWeight: 600, cursor: "pointer" }}
+                        className="playlist-owner__link"
                         onClick={() => navigate(`/profile/${owner.username}`)}
                       >
                         {owner.full_name ?? owner.username}
@@ -687,16 +669,7 @@ const PlaylistPage = () => {
                       <button
                         type="button"
                         onClick={handleToggleEditModal}
-                        style={{
-                          background: "transparent",
-                          color: "#f5f5f5",
-                          border: "1px solid #2b2b2b",
-                          padding: "10px 22px",
-                          fontWeight: 600,
-                          letterSpacing: 0.4,
-                          cursor: "pointer",
-                          borderRadius: 0
-                        }}
+                        className="playlist-hero__edit"
                       >
                         Edit
                       </button>
@@ -706,194 +679,132 @@ const PlaylistPage = () => {
               </section>
 
               {playlist.description && (
-                <section style={{ background: "#101010", border: "1px solid #1f1f1f", borderRadius: 0, padding: 24, color: "#cfcfcf" }}>
-                  <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 3, color: "#7f7f7f", marginBottom: 12 }}>Description</div>
-                  <p style={{ margin: 0, lineHeight: 1.6, fontSize: 14 }}>{playlist.description}</p>
+                <section className="playlist-description">
+                  <div className="playlist-section__label">Description</div>
+                  <p>{playlist.description}</p>
                 </section>
               )}
 
-              <section style={{ background: "#101010", border: "1px solid #1f1f1f", borderRadius: 0, overflow: "hidden" }}>
-                <header style={{
-                  display: "grid",
-                  gridTemplateColumns: "56px minmax(0, 2fr) minmax(0, 1.3fr) 120px 100px",
-                  gap: 12,
-                  padding: "16px 24px",
-                  color: "#7c7c7c",
-                  fontSize: 11,
-                  letterSpacing: 1.5,
-                  textTransform: "uppercase",
-                  borderBottom: "1px solid #1f1f1f"
-                }}>
-                  <span>#</span>
-                  <span>Title</span>
-                  <span>Artist</span>
-                  <span style={{ textAlign: "center" }}>Plays</span>
-                  <span style={{ textAlign: "right" }}>Time</span>
-                </header>
-                <div>
-                  {tracks.map((trackSummary, idx) => {
-                    const isCurrent = currentTrack?.id === trackSummary.trackId;
-                    return (
-                      <button
-                        key={trackSummary.trackId ?? `${trackSummary.title}-${idx}`}
-                        type="button"
-                        onClick={() => handlePlayTrack(trackSummary)}
-                        style={{
-                          width: "100%",
-                          border: "none",
-                          background: isCurrent ? "#181818" : "transparent",
-                          color: "#e5e5e5",
-                          cursor: "pointer",
-                          display: "grid",
-                          gridTemplateColumns: "56px minmax(0, 2fr) minmax(0, 1.3fr) 120px 100px",
-                          gap: 12,
-                          alignItems: "center",
-                          padding: "16px 24px",
-                          borderBottom: "1px solid #1f1f1f"
-                        }}
-                      >
-                        <span style={{ fontSize: 13, color: "#767676" }}>{idx + 1}</span>
-                        <span style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                          <img
-                            src={trackSummary.coverUrl || playlistCover}
-                            alt="Track cover"
-                            style={{ width: 52, height: 52, objectFit: "cover", background: "#181818", border: "1px solid #222", borderRadius: 0 }}
-                          />
-                          <span style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {trackSummary.title}
-                          </span>
-                        </span>
-                        <span style={{ fontSize: 14, color: "#b8b8b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {trackSummary.artist ?? "Unknown"}
-                        </span>
-                        <span style={{ fontSize: 13, color: "#8d8d8d", textAlign: "center" }}>{formatCount(trackSummary.plays)}</span>
-                        <span style={{ fontSize: 13, color: "#8d8d8d", textAlign: "right" }}>{formatClock(trackSummary.durationSeconds)}</span>
-                      </button>
-                    );
-                  })}
-                  {!tracks.length && (
-                    <div style={{ padding: "32px" }}>
-                      {isOwner ? (
-                        <div style={{
-                          maxWidth: 480,
-                          margin: "0 auto",
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 16,
-                          alignItems: "stretch"
-                        }}>
-                          <div>
-                            <div style={{ fontSize: 18, fontWeight: 600, color: "#f5f5f5", marginBottom: 6 }}>Add tracks to start this playlist</div>
-                            <div style={{ fontSize: 14, color: "#b3b3b3" }}>Search the catalog for public tracks and add them instantly.</div>
-                          </div>
-                          <div ref={setMainSearchRef} style={{ position: "relative" }}>
-                            <input
-                              type="text"
-                              value={trackSearchTerm}
-                              onChange={(event) => setTrackSearchTerm(event.target.value)}
-                              onFocus={() => {
-                                setSearchAnchor("main");
-                                if (trimmedSearchTerm.length > 0) {
-                                  setSearchOpen(true);
-                                }
-                              }}
-                              placeholder="Search for tracks"
-                              style={{
-                                width: "100%",
-                                padding: "12px 14px",
-                                borderRadius: 0,
-                                border: "1px solid #2c2c2c",
-                                background: "#151515",
-                                color: "#f5f5f5",
-                                fontSize: 14
-                              }}
-                              disabled={addingTrackId !== null}
-                            />
-                            {searchOpen && searchAnchor === "main" && (
-                              <div style={{
-                                position: "absolute",
-                                left: 0,
-                                right: 0,
-                                top: "calc(100% + 6px)",
-                                background: "#121212",
-                                border: "1px solid #2d2d2d",
-                                borderRadius: 0,
-                                padding: 12,
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 10,
-                                maxHeight: 320,
-                                overflowY: "auto",
-                                zIndex: 2000
-                              }}>
-                                {showSearchHint && (
-                                  <div style={{ fontSize: 12, color: "#9d9d9d" }}>
-                                    Type at least {MIN_SEARCH_LENGTH} characters to search.
-                                  </div>
-                                )}
-                                {searchingTracks && (
-                                  <div style={{ fontSize: 12, color: "#9d9d9d" }}>Searching…</div>
-                                )}
-                                {searchError && (
-                                  <div style={{ fontSize: 12, color: "#ff9090" }}>{searchError}</div>
-                                )}
-                                {!showSearchHint && !searchingTracks && !searchError && trackSearchResults.map((option) => (
-                                  <div
-                                    key={`search-track-${option.id}`}
-                                    style={{
-                                      display: "flex",
-                                      justifyContent: "space-between",
-                                      alignItems: "center",
-                                      gap: 12,
-                                      padding: "10px 12px",
-                                      borderRadius: 0,
-                                      background: "#181818",
-                                      border: "1px solid #2c2c2c"
-                                    }}
-                                  >
-                                    <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 0 }}>
-                                      <span style={{ fontSize: 14, color: "#f5f5f5", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{option.title}</span>
-                                      {option.artist && (
-                                        <span style={{ fontSize: 12, color: "#a3a3a3" }}>{option.artist}</span>
-                                      )}
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleAddTrackToPlaylist(option)}
-                                      disabled={addingTrackId === option.id}
-                                      style={{
-                                        background: addingTrackId === option.id ? "#3a3a3a" : "#ff5500",
-                                        color: "#fff",
-                                        border: "none",
-                                        borderRadius: 0,
-                                        padding: "6px 18px",
-                                        fontWeight: 600,
-                                        cursor: addingTrackId === option.id ? "default" : "pointer"
-                                      }}
-                                    >
-                                      {addingTrackId === option.id ? "Adding…" : "Add"}
-                                    </button>
-                                  </div>
-                                ))}
-                                {showNoResults && searchAnchor === "main" && (
-                                  <div style={{ fontSize: 12, color: "#9d9d9d" }}>
-                                    No public tracks found for "{trimmedSearchTerm}".
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          <div style={{ fontSize: 12, color: "#8d8d8d" }}>
-                            Tracks you already added will disappear from these results.
-                          </div>
-                        </div>
-                      ) : (
-                        <div style={{ color: "#8c8c8c", fontSize: 15, textAlign: "center" }}>
-                          This playlist does not have any tracks yet.
-                        </div>
-                      )}
+              <section className="playlist-tracklist">
+                <div className="playlist-tracklist__surface">
+                  <header className="playlist-tracklist__header">
+                    <span>#</span>
+                    <span>Title</span>
+                    <span>Artist</span>
+                    <div className="playlist-tracklist__header-stats">
+                      <span>Plays</span>
+                      <span>Time</span>
                     </div>
-                  )}
+                  </header>
+                  <div className="playlist-tracklist__body">
+                    {tracks.map((trackSummary, idx) => {
+                      const isCurrent = currentTrack?.id === trackSummary.trackId;
+                      return (
+                        <button
+                          key={trackSummary.trackId ?? `${trackSummary.title}-${idx}`}
+                          type="button"
+                          onClick={() => handlePlayTrack(trackSummary)}
+                          className={`playlist-tracklist__row${isCurrent ? " playlist-tracklist__row--current" : ""}`}
+                        >
+                          <span className="playlist-tracklist__index">{idx + 1}</span>
+                          <div className="playlist-tracklist__titleBlock">
+                            <div className="playlist-tracklist__cover">
+                              <img
+                                src={trackSummary.coverUrl || playlistCover}
+                                alt="Track cover"
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              />
+                            </div>
+                            <div className="playlist-tracklist__text">
+                              <span className="playlist-tracklist__trackTitle">{trackSummary.title}</span>
+                              <span className="playlist-tracklist__artistMobile">{trackSummary.artist ?? "Unknown"}</span>
+                            </div>
+                          </div>
+                          <span className="playlist-tracklist__artistCol">{trackSummary.artist ?? "Unknown"}</span>
+                          <div className="playlist-tracklist__stats">
+                            <span className="playlist-tracklist__plays">{formatCount(trackSummary.plays)}</span>
+                            <span className="playlist-tracklist__duration">{formatClock(trackSummary.durationSeconds)}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                    {!tracks.length && (
+                      <div className="playlist-empty">
+                        {isOwner ? (
+                          <div className="playlist-empty__panel">
+                            <div>
+                              <div className="playlist-empty__title">Add tracks to start this playlist</div>
+                              <div className="playlist-empty__copy">Search the catalog for public tracks and add them instantly.</div>
+                            </div>
+                            <div ref={setMainSearchRef} className="playlist-empty__search">
+                              <input
+                                type="text"
+                                value={trackSearchTerm}
+                                onChange={(event) => setTrackSearchTerm(event.target.value)}
+                                onFocus={() => {
+                                  setSearchAnchor("main");
+                                  if (trimmedSearchTerm.length > 0) {
+                                    setSearchOpen(true);
+                                  }
+                                }}
+                                placeholder="Search for tracks"
+                                className="playlist-searchInput"
+                                disabled={addingTrackId !== null}
+                              />
+                              {searchOpen && searchAnchor === "main" && (
+                                <div className="playlist-searchResults">
+                                  {showSearchHint && (
+                                    <div className="playlist-searchResults__hint">
+                                      Type at least {MIN_SEARCH_LENGTH} characters to search.
+                                    </div>
+                                  )}
+                                  {searchingTracks && (
+                                    <div className="playlist-searchResults__hint">Searching…</div>
+                                  )}
+                                  {searchError && (
+                                    <div className="playlist-searchResults__error">{searchError}</div>
+                                  )}
+                                  {!showSearchHint && !searchingTracks && !searchError && trackSearchResults.map((option) => (
+                                    <div
+                                      key={`search-track-${option.id}`}
+                                      className="playlist-searchResults__row"
+                                    >
+                                      <div>
+                                        <span className="playlist-searchResults__title">{option.title}</span>
+                                        {option.artist && (
+                                          <span className="playlist-searchResults__artist">{option.artist}</span>
+                                        )}
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleAddTrackToPlaylist(option)}
+                                        disabled={addingTrackId === option.id}
+                                        className="playlist-searchResults__add"
+                                      >
+                                        {addingTrackId === option.id ? "Adding…" : "Add"}
+                                      </button>
+                                    </div>
+                                  ))}
+                                  {showNoResults && searchAnchor === "main" && (
+                                    <div className="playlist-searchResults__hint">
+                                      No public tracks found for "{trimmedSearchTerm}".
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <div className="playlist-empty__hint">
+                              Tracks you already added will disappear from these results.
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="playlist-empty__message">
+                            This playlist does not have any tracks yet.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </section>
 

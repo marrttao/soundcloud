@@ -1,4 +1,5 @@
 import React from 'react';
+import useBreakpoint from '../../hooks/useBreakpoint';
 
 const FALLBACK_ART = 'https://i.imgur.com/6unG5jv.png';
 
@@ -11,6 +12,12 @@ const Cover = ({
     disabled = false
 }) => {
     const artwork = imageUrl || FALLBACK_ART;
+    const isCompact = useBreakpoint(520);
+    const cardWidth = isCompact ? 150 : 192;
+    const cardHeight = isCompact ? 184 : 208;
+    const artSize = isCompact ? 128 : 160;
+    const cardPadding = isCompact ? 12 : 16;
+    const textWidth = artSize;
 
     return (
         <button
@@ -18,13 +25,13 @@ const Cover = ({
             onClick={disabled ? undefined : onClick}
             disabled={disabled}
             style={{
-                width: '192px',
-                height: '208px',
+                width: `${cardWidth}px`,
+                height: `${cardHeight}px`,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '16px',
+                padding: `${cardPadding}px`,
                 boxSizing: 'border-box',
                 backgroundColor: '#1a1a1a',
                 border: 'none',
@@ -36,8 +43,8 @@ const Cover = ({
         >
             <div style={{
                 position: 'relative',
-                width: '160px',
-                height: '160px',
+                width: `${artSize}px`,
+                height: `${artSize}px`,
                 borderRadius: '8px',
                 overflow: 'hidden',
                 backgroundColor: '#222'
@@ -69,8 +76,8 @@ const Cover = ({
                 ) : null}
             </div>
             <div style={{
-                width: '160px',
-                height: '40px',
+                width: `${textWidth}px`,
+                height: isCompact ? '36px' : '40px',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',

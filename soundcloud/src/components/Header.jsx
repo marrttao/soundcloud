@@ -7,6 +7,7 @@ import message from "../assets/icons/message.png";
 import { search } from "../api/search";
 import { useCurrentProfile, clearProfileCache } from "../context/ProfileContext";
 import { clearAuthTokens, setAuthFlag } from "../utils/authFlag";
+import useBreakpoint from "../hooks/useBreakpoint";
 // NOTE: This component must be rendered inside a <Router> (e.g., <BrowserRouter>) for NavLink to work.
 
 const sampleNotifications = [];
@@ -20,12 +21,16 @@ const Header = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [mobileSearchVisible, setMobileSearchVisible] = useState(false);
   const menuRef = useRef(null);
   const searchRef = useRef(null);
   const notificationsRef = useRef(null);
   const messagesRef = useRef(null);
   const { profile } = useCurrentProfile();
   const avatarUrl = profile?.avatar_url ?? null;
+  const isMobile = useBreakpoint(768);
+  const showActivityButtons = !isMobile;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -46,6 +51,13 @@ const Header = () => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileNavOpen(false);
+      setMobileSearchVisible(false);
+    }
+  }, [isMobile]);
 
   useEffect(() => {
     const delaySearch = setTimeout(async () => {
@@ -118,221 +130,294 @@ const Header = () => {
     { label: "Tracks", to: "/profile?tab=tracks" }
   ];
 
-  return (
-    <header
-      className="header"
+  const mainNavLinks = [
+    { label: "Home", to: "/", exact: true },
+    { label: "Feed", to: "/feed" },
+    { label: "Library", to: "/library" }
+  ];
+
+  const secondaryLinks = [
+    { label: "Try Artist Pro", to: "/artist-pro", primary: true },
+    { label: "For Artists", to: "/for-artists" },
+    { label: "Upload", to: "/upload" }
+  ];
+
+  const toggleMobileNav = () => {
+    setMobileNavOpen((open) => !open);
+    setMobileSearchVisible(false);
+  };
+
+  const renderSearchField = (styleOverrides = {}) => (
+    <div
+      className="header-search"
       style={{
-        background: "#181818",
-        padding: "0 32px",
-        height: "56px",
         display: "flex",
         alignItems: "center",
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
-        zIndex: 1000
+        position: "relative",
+        width: isMobile ? "100%" : "auto",
+        flex: isMobile ? 1 : 0,
+        ...styleOverrides
       }}
+      ref={searchRef}
     >
-      <div
-        className="header-content"
+      <input
+        type="text"
+        placeholder="Search"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "1240px",
-          gap: "40px",
-          margin: "0 auto"
+          width: isMobile ? "100%" : "340px",
+          padding: "8px 12px",
+          borderRadius: "4px",
+          border: "none",
+          background: "#232323",
+          color: "#fff"
         }}
-      >
-        {/* Logo */}
-        <img src={logo} alt="SoundCloud Logo" style={{ width: "48px", height: "46px", marginRight: "8px" }} />
-
-        {/* Navigation */}
-        <nav style={{ display: "flex", gap: "16px" }}>
-          {[
-            { label: "Home", to: "/" },
-            { label: "Feed", to: "/feed" },
-            { label: "Library", to: "/library" }
-          ].map(({ label, to }) => (
-            <NavLink
-              key={label}
-              to={to}
-              end={to === "/"}
-              style={({ isActive }) => ({
-                color: isActive ? "#fff" : "#ccc",
-                fontWeight: isActive ? "bold" : "normal",
-                textDecoration: "none",
-                paddingBottom: "4px",
-                borderBottom: isActive ? "2px solid #ff5500" : "2px solid transparent",
-                transition: "border-bottom 0.2s, color 0.2s",
-                cursor: "pointer"
-              })}
-              onMouseOver={(e) => (e.currentTarget.style.color = "#ff5500")}
-              onMouseOut={(e) => {
-                const isActive = e.currentTarget.getAttribute("aria-current") === "page";
-                e.currentTarget.style.color = isActive ? "#fff" : "#ccc";
-              }}
-            >
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-
-        {/* Search */}
-        <div className="header-search" style={{ display: "flex", alignItems: "center", position: "relative" }} ref={searchRef}>
-          <input
-            type="text"
-            placeholder="Search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: "340px",
-              padding: "8px 12px",
-              borderRadius: "4px",
-              border: "none",
-              background: "#232323",
-              color: "#fff"
-            }}
-          />
-          {searchOpen && searchResults && (searchResults.profiles.length > 0 || searchResults.tracks.length > 0) && (
-            <div style={{
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              right: 0,
-              background: "#121212",
-              border: "1px solid #2d2d2d",
-              borderRadius: "8px",
-              marginTop: "4px",
-              maxHeight: "400px",
-              overflowY: "auto",
-              boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
-              zIndex: 3000
-            }}>
-              {searchResults.profiles.length > 0 && (
-                <div style={{ padding: "8px 12px" }}>
-                  <div style={{ color: "#999", fontSize: "12px", fontWeight: "600", marginBottom: "8px" }}>PROFILES</div>
-                  {searchResults.profiles.map((profile) => (
-                    <NavLink
-                      key={profile.id}
-                      to={`/profile/${profile.username}`}
-                      onClick={() => {
-                        setSearchOpen(false);
-                        setSearchQuery("");
-                      }}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        padding: "8px",
-                        borderRadius: "4px",
-                        textDecoration: "none",
-                        color: "#fff",
-                        transition: "background 0.2s"
-                      }}
-                      onMouseOver={(e) => (e.currentTarget.style.background = "#1a1a1a")}
-                      onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
-                    >
-                      {profile.avatar_url ? (
-                        <img
-                          src={profile.avatar_url}
-                          alt={profile.username}
-                          style={{ width: "40px", height: "40px", borderRadius: "50%", objectFit: "cover" }}
-                        />
-                      ) : (
-                        <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#444" }} />
-                      )}
-                      <div>
-                        <div style={{ fontSize: "14px", fontWeight: "500" }}>{profile.username}</div>
-                        {profile.full_name && <div style={{ fontSize: "12px", color: "#999" }}>{profile.full_name}</div>}
-                      </div>
-                    </NavLink>
-                  ))}
-                </div>
-              )}
-              {searchResults.tracks.length > 0 && (
-                <div style={{ padding: "8px 12px", borderTop: searchResults.profiles.length > 0 ? "1px solid #2d2d2d" : "none" }}>
-                  <div style={{ color: "#999", fontSize: "12px", fontWeight: "600", marginBottom: "8px" }}>TRACKS</div>
-                  {searchResults.tracks.map((track) => (
-                    <NavLink
-                      key={track.id}
-                      to={`/tracks/${track.id}`}
-                      onClick={() => {
-                        setSearchOpen(false);
-                        setSearchQuery("");
-                      }}
-                      style={{
-                        display: "block",
-                        padding: "8px",
-                        borderRadius: "4px",
-                        textDecoration: "none",
-                        color: "#fff",
-                        transition: "background 0.2s"
-                      }}
-                      onMouseOver={(e) => (e.currentTarget.style.background = "#1a1a1a")}
-                      onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
-                    >
-                      <div style={{ fontSize: "14px" }}>{track.title}</div>
-                    </NavLink>
-                  ))}
-                </div>
-              )}
+      />
+      {searchOpen && searchResults && (searchResults.profiles.length > 0 || searchResults.tracks.length > 0) && (
+        <div style={{
+          position: "absolute",
+          top: "100%",
+          left: 0,
+          right: 0,
+          background: "#121212",
+          border: "1px solid #2d2d2d",
+          borderRadius: "8px",
+          marginTop: "4px",
+          maxHeight: "400px",
+          overflowY: "auto",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+          zIndex: 3000
+        }}>
+          {searchResults.profiles.length > 0 && (
+            <div style={{ padding: "8px 12px" }}>
+              <div style={{ color: "#999", fontSize: "12px", fontWeight: "600", marginBottom: "8px" }}>PROFILES</div>
+              {searchResults.profiles.map((profile) => (
+                <NavLink
+                  key={profile.id}
+                  to={`/profile/${profile.username}`}
+                  onClick={() => {
+                    setSearchOpen(false);
+                    setSearchQuery("");
+                    setMobileSearchVisible(false);
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    padding: "8px",
+                    borderRadius: "4px",
+                    textDecoration: "none",
+                    color: "#fff",
+                    transition: "background 0.2s"
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                  onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  {profile.avatar_url ? (
+                    <img
+                      src={profile.avatar_url}
+                      alt={profile.username}
+                      style={{ width: "40px", height: "40px", borderRadius: "50%", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#444" }} />
+                  )}
+                  <div>
+                    <div style={{ fontSize: "14px", fontWeight: "500" }}>{profile.username}</div>
+                    {profile.full_name && <div style={{ fontSize: "12px", color: "#999" }}>{profile.full_name}</div>}
+                  </div>
+                </NavLink>
+              ))}
+            </div>
+          )}
+          {searchResults.tracks.length > 0 && (
+            <div style={{ padding: "8px 12px", borderTop: searchResults.profiles.length > 0 ? "1px solid #2d2d2d" : "none" }}>
+              <div style={{ color: "#999", fontSize: "12px", fontWeight: "600", marginBottom: "8px" }}>TRACKS</div>
+              {searchResults.tracks.map((track) => (
+                <NavLink
+                  key={track.id}
+                  to={`/tracks/${track.id}`}
+                  onClick={() => {
+                    setSearchOpen(false);
+                    setSearchQuery("");
+                    setMobileSearchVisible(false);
+                  }}
+                  style={{
+                    display: "block",
+                    padding: "8px",
+                    borderRadius: "4px",
+                    textDecoration: "none",
+                    color: "#fff",
+                    transition: "background 0.2s"
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                  onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <div style={{ fontSize: "14px" }}>{track.title}</div>
+                </NavLink>
+              ))}
             </div>
           )}
         </div>
+      )}
+    </div>
+  );
 
-        {/* Right links */}
-        <div className="header-actions" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          {[
-            { label: "Try Artist Pro", to: "/artist-pro", primary: true },
-            { label: "For Artists", to: "/for-artists" }
-          ].map(({ label, to, primary }) => (
-            <NavLink
-              key={label}
-              to={to}
-              style={({ isActive }) => ({
-                color: isActive ? "#fff" : primary ? "#ff5500" : "#ccc",
-                fontWeight: primary ? "bold" : "normal",
-                textDecoration: "none",
-                transition: "color 0.2s",
-                cursor: "pointer",
-                paddingBottom: "2px",
-                borderBottom: isActive ? "2px solid #ff5500" : "2px solid transparent"
-              })}
-              onMouseOver={(e) => (e.currentTarget.style.color = "#fff")}
-              onMouseOut={(e) => {
-                const isActive = e.currentTarget.getAttribute("aria-current") === "page";
-                e.currentTarget.style.color = isActive ? "#fff" : primary ? "#ff5500" : "#ccc";
-              }}
-            >
-              {label}
-            </NavLink>
-          ))}
+  return (
+    <>
+      <header
+        className="header"
+        style={{
+          background: "#181818",
+          padding: isMobile ? "0 16px" : "0 32px",
+          height: isMobile ? "64px" : "56px",
+          display: "flex",
+          alignItems: "center",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          zIndex: 1000,
+          borderBottom: "1px solid #111"
+        }}
+      >
+        <div
+          className="header-content"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+            maxWidth: 1240,
+            gap: isMobile ? "12px" : "32px",
+            margin: "0 auto",
+            flexWrap: isMobile ? "wrap" : "nowrap",
+            rowGap: isMobile ? "8px" : 0
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 12 : 20, minWidth: 0 }}>
+            {isMobile && (
+              <button
+                type="button"
+                onClick={toggleMobileNav}
+                aria-label="Toggle navigation"
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 6,
+                  border: "1px solid #2a2a2a",
+                  background: "#202020",
+                  color: "#fff",
+                  fontSize: 18,
+                  cursor: "pointer"
+                }}
+              >
+                ☰
+              </button>
+            )}
+            <img src={logo} alt="SoundCloud Logo" style={{ width: isMobile ? "40px" : "48px", height: isMobile ? "38px" : "46px" }} />
+            {!isMobile && (
+              <nav style={{ display: "flex", gap: "16px" }}>
+                {mainNavLinks.map(({ label, to, exact }) => (
+                  <NavLink
+                    key={label}
+                    to={to}
+                    end={Boolean(exact)}
+                    style={({ isActive }) => ({
+                      color: isActive ? "#fff" : "#ccc",
+                      fontWeight: isActive ? "bold" : "normal",
+                      textDecoration: "none",
+                      paddingBottom: "4px",
+                      borderBottom: isActive ? "2px solid #ff5500" : "2px solid transparent",
+                      transition: "border-bottom 0.2s, color 0.2s",
+                      cursor: "pointer"
+                    })}
+                    onMouseOver={(e) => (e.currentTarget.style.color = "#ff5500")}
+                    onMouseOut={(e) => {
+                      const active = e.currentTarget.getAttribute("aria-current") === "page";
+                      e.currentTarget.style.color = active ? "#fff" : "#ccc";
+                    }}
+                  >
+                    {label}
+                  </NavLink>
+                ))}
+              </nav>
+            )}
+          </div>
+          {!isMobile && renderSearchField()}
+          {!isMobile && (
+            <div className="header-actions" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+              {secondaryLinks.map(({ label, to, primary }) => (
+                <NavLink
+                  key={label}
+                  to={to}
+                  style={({ isActive }) => ({
+                    color: isActive
+                      ? label === "Upload"
+                        ? "#ff5500"
+                        : "#fff"
+                      : primary
+                        ? "#ff5500"
+                        : "#ccc",
+                    fontWeight: primary || label === "Upload" ? "bold" : "normal",
+                    textDecoration: "none",
+                    transition: "color 0.2s",
+                    cursor: "pointer",
+                    paddingBottom: "2px",
+                    borderBottom: isActive ? "2px solid #ff5500" : "2px solid transparent"
+                  })}
+                  onMouseOver={(e) => (e.currentTarget.style.color = "#fff")}
+                  onMouseOut={(e) => {
+                    const active = e.currentTarget.getAttribute("aria-current") === "page";
+                    e.currentTarget.style.color = active
+                      ? label === "Upload"
+                        ? "#ff5500"
+                        : "#fff"
+                      : primary
+                        ? "#ff5500"
+                        : "#ccc";
+                  }}
+                >
+                  {label}
+                </NavLink>
+              ))}
+            </div>
+          )}
 
-          <NavLink
-            to="/upload"
-            style={({ isActive }) => ({
-              color: isActive ? "#ff5500" : "#ccc",
-              fontWeight: isActive ? "bold" : "normal",
-              textDecoration: "none",
-              transition: "color 0.2s",
-              cursor: "pointer",
-              paddingBottom: "2px",
-              borderBottom: isActive ? "2px solid #ff5500" : "2px solid transparent"
-            })}
-            onMouseOver={(e) => (e.currentTarget.style.color = "#fff")}
-            onMouseOut={(e) => {
-              const isActive = e.currentTarget.getAttribute("aria-current") === "page";
-              e.currentTarget.style.color = isActive ? "#ff5500" : "#ccc";
+          <div
+            className="header-icons"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: isMobile ? "8px" : "12px",
+              position: "relative",
+              marginLeft: isMobile ? 0 : "auto",
+              flexWrap: isMobile ? "wrap" : "nowrap",
+              justifyContent: "flex-end",
+              flexShrink: 0
             }}
+            ref={menuRef}
           >
-            Upload
-          </NavLink>
-        </div>
-
-        {/* Avatar and icons */}
-        <div className="header-icons" style={{ display: "flex", alignItems: "center", gap: "12px", position: "relative" }} ref={menuRef}>
+            {isMobile && (
+              <button
+                type="button"
+                onClick={() => setMobileSearchVisible((open) => !open)}
+                aria-label="Toggle search"
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 6,
+                  border: "1px solid #2a2a2a",
+                  background: mobileSearchVisible ? "#2a2a2a" : "#202020",
+                  color: "#fff",
+                  fontSize: 16,
+                  cursor: "pointer"
+                }}
+              >
+                ⌕
+              </button>
+            )}
           <div
             onClick={toggleMenu}
             style={{ display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", position: "relative" }}
@@ -359,28 +444,31 @@ const Header = () => {
                 }}
               />
             )}
-            <img
-              src={arrow_down}
-              alt="Arrow Down"
-              style={{
-                width: 15,
-                height: 15,
-                marginLeft: "-4px",
-                marginRight: "8px",
-                filter: "invert(1) brightness(2)",
-                transition: "filter 0.2s"
-              }}
-              onMouseOver={(e) => (e.currentTarget.style.filter = "invert(1) brightness(3)")}
-              onMouseOut={(e) => (e.currentTarget.style.filter = "invert(1) brightness(2)")}
-            />
+            {!isMobile && (
+              <img
+                src={arrow_down}
+                alt="Arrow Down"
+                style={{
+                  width: 15,
+                  height: 15,
+                  marginLeft: "-4px",
+                  marginRight: "8px",
+                  filter: "invert(1) brightness(2)",
+                  transition: "filter 0.2s"
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.filter = "invert(1) brightness(3)")}
+                onMouseOut={(e) => (e.currentTarget.style.filter = "invert(1) brightness(2)")}
+              />
+            )}
           </div>
+          {showActivityButtons && (
           <div ref={notificationsRef} style={{ position: "relative" }}>
             <button
               type="button"
               onClick={toggleNotifications}
               style={{
-                width: 32,
-                height: 32,
+                width: isMobile ? 28 : 32,
+                height: isMobile ? 28 : 32,
                 borderRadius: "50%",
                 border: "none",
                 background: "transparent",
@@ -441,13 +529,15 @@ const Header = () => {
               </div>
             )}
           </div>
+          )}
+          {showActivityButtons && (
           <div ref={messagesRef} style={{ position: "relative" }}>
             <button
               type="button"
               onClick={toggleMessages}
               style={{
-                width: 32,
-                height: 32,
+                width: isMobile ? 28 : 32,
+                height: isMobile ? 28 : 32,
                 borderRadius: "50%",
                 border: "none",
                 background: "transparent",
@@ -507,6 +597,7 @@ const Header = () => {
               </div>
             )}
           </div>
+          )}
 
           {menuOpen && (
             <div
@@ -573,7 +664,128 @@ const Header = () => {
           )}
         </div>
       </div>
-    </header>
+      </header>
+      {isMobile && mobileSearchVisible && (
+        <div style={{
+          position: "sticky",
+          top: isMobile ? 64 : 56,
+          background: "#0f0f0f",
+          padding: "12px 16px",
+          borderBottom: "1px solid #1f1f1f",
+          zIndex: 900
+        }}>
+          {renderSearchField({ width: "100%" })}
+        </div>
+      )}
+      {isMobile && mobileNavOpen && (
+        <div style={{
+          position: "fixed",
+          top: 64,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(4,4,4,0.96)",
+          backdropFilter: "blur(10px)",
+          zIndex: 950,
+          padding: "24px 20px",
+          overflowY: "auto"
+        }}>
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={toggleMobileNav}
+              aria-label="Close navigation"
+              style={{
+                border: "none",
+                background: "transparent",
+                color: "#fff",
+                fontSize: 24,
+                cursor: "pointer"
+              }}
+            >
+              ✕
+            </button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 24, marginTop: 12 }}>
+            <div>
+              <p style={{ color: "#666", fontSize: 12, margin: "0 0 8px" }}>NAVIGATION</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {mainNavLinks.map(({ label, to, exact }) => (
+                  <NavLink
+                    key={label}
+                    to={to}
+                    end={Boolean(exact)}
+                    onClick={toggleMobileNav}
+                    style={({ isActive }) => ({
+                      color: isActive ? "#ff5500" : "#fff",
+                      textDecoration: "none",
+                      fontSize: 18,
+                      fontWeight: 600
+                    })}
+                  >
+                    {label}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p style={{ color: "#666", fontSize: 12, margin: "0 0 8px" }}>SHORTCUTS</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {secondaryLinks.map(({ label, to }) => (
+                  <NavLink
+                    key={label}
+                    to={to}
+                    onClick={toggleMobileNav}
+                    style={({ isActive }) => ({
+                      color: isActive ? "#ff5500" : "#fff",
+                      textDecoration: "none",
+                      fontSize: 16
+                    })}
+                  >
+                    {label}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p style={{ color: "#666", fontSize: 12, margin: "0 0 8px" }}>ACCOUNT</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {profileRoutes.map((item) => (
+                  <NavLink
+                    key={item.label}
+                    to={item.to}
+                    onClick={toggleMobileNav}
+                    style={({ isActive }) => ({
+                      color: isActive ? "#ff5500" : "#fff",
+                      textDecoration: "none",
+                      fontSize: 15
+                    })}
+                  >
+                    {item.label}
+                  </NavLink>
+                ))}
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  style={{
+                    marginTop: 8,
+                    border: "1px solid #2a2a2a",
+                    background: "transparent",
+                    color: "#ff8a8a",
+                    borderRadius: 8,
+                    padding: "10px 12px",
+                    fontWeight: 600,
+                    cursor: "pointer"
+                  }}
+                >
+                  Log out
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

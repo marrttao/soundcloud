@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { NavLink } from "react-router-dom";
+import useBreakpoint from "../../hooks/useBreakpoint";
 
 const navItems = [
   { label: "All", tab: "all" },
@@ -21,6 +22,7 @@ const Banner = ({
   const avatarUrl = profile?.avatar_url ?? "https://i.imgur.com/6unG5jv.png";
   const name = profile?.full_name ?? profile?.username ?? "Creator";
   const subtitle = profile?.bio ?? "Share your sound with the world.";
+  const isCompact = useBreakpoint(768);
   const basePath = useMemo(() => {
     if (isOwnProfile) {
       return "/profile";
@@ -63,21 +65,25 @@ const Banner = ({
     <>
       <section
         style={{
-          paddingBottom: 16,
+          paddingBottom: isCompact ? 12 : 16,
           borderBottom: "1px solid rgba(255,255,255,0.1)",
           ...bannerStyle
         }}
       >
         <div style={{
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "20px 32px"
+          alignItems: isCompact ? "flex-start" : "center",
+          justifyContent: isCompact ? "flex-start" : "space-between",
+          flexDirection: isCompact ? "column" : "row",
+          gap: isCompact ? 16 : 0,
+          padding: isCompact ? "16px" : "20px 32px",
+          boxSizing: "border-box",
+          width: "100%"
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+          <div style={{ display: "flex", alignItems: isCompact ? "flex-start" : "center", gap: 18, width: "100%", flexWrap: isCompact ? "wrap" : "nowrap" }}>
             <div style={{
-              width: 110,
-              height: 110,
+              width: isCompact ? 88 : 110,
+              height: isCompact ? 88 : 110,
               borderRadius: "50%",
               overflow: "hidden",
               boxShadow: "0 10px 25px rgba(0,0,0,0.25)"
@@ -88,10 +94,10 @@ const Banner = ({
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
             </div>
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <h1 style={{
                 margin: 0,
-                fontSize: 32,
+                fontSize: isCompact ? 24 : 32,
                 fontWeight: 700,
                 color: "#fff",
                 textShadow: "0 6px 18px rgba(0,0,0,0.35)",
@@ -101,7 +107,9 @@ const Banner = ({
                 margin: "8px 0 0",
                 color: "#fff",
                 fontWeight: 500,
-                textShadow: "0 6px 18px rgba(0,0,0,0.35)"
+                textShadow: "0 6px 18px rgba(0,0,0,0.35)",
+                fontSize: isCompact ? 13 : 15,
+                lineHeight: isCompact ? "20px" : "inherit"
               }}>{subtitle}</p>
             </div>
           </div>
@@ -114,7 +122,8 @@ const Banner = ({
               padding: "10px 22px",
               fontWeight: 600,
               cursor: "pointer",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.3)"
+              boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+              alignSelf: isCompact ? "flex-start" : "center"
             }} onClick={onEdit}>Edit profile</button>
           )}
         </div>
@@ -123,12 +132,22 @@ const Banner = ({
         background: "#0d0d0d",
         borderTop: "1px solid rgba(255,255,255,0.08)",
         borderBottom: "1px solid rgba(255,255,255,0.08)",
-        padding: "12px 32px",
+        padding: isCompact ? "12px 16px" : "12px 32px",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between"
+        alignItems: isCompact ? "flex-start" : "center",
+        justifyContent: "space-between",
+        flexDirection: isCompact ? "column" : "row",
+        gap: isCompact ? 12 : 0,
+        boxSizing: "border-box"
       }}>
-        <div style={{ display: "flex", gap: 28, fontSize: 14, color: "#cfcfcf" }}>
+        <div style={{
+          display: "flex",
+          gap: isCompact ? 16 : 28,
+          fontSize: 14,
+          color: "#cfcfcf",
+          flexWrap: "wrap",
+          width: "100%"
+        }}>
           {navItems.map(item => (
             <NavLink
               key={item.tab}
@@ -148,7 +167,7 @@ const Banner = ({
             </NavLink>
           ))}
         </div>
-        <div>
+        <div style={{ width: isCompact ? "100%" : "auto", display: "flex", justifyContent: isCompact ? "flex-start" : "flex-end" }}>
           {canFollow && (
             <button
               type="button"
@@ -164,7 +183,8 @@ const Banner = ({
                 fontSize: 13,
                 cursor: followBusy ? "not-allowed" : "pointer",
                 opacity: followBusy ? 0.6 : 1,
-                letterSpacing: 0.2
+                letterSpacing: 0.2,
+                width: isCompact ? "100%" : "auto"
               }}
             >
               {followBusy ? "Updating" : followLabel}
