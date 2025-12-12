@@ -16,7 +16,6 @@ import {
   clearAuthTokens
 } from "../../utils/authFlag";
 import ProfileSetupModal from "./ProfileSetupModal";
-import useBreakpoint from "../../hooks/useBreakpoint";
 // import Header from "../components/Header.jsx";
 // import Footer from "../components/Footer.jsx";
 // статичные данные
@@ -64,6 +63,13 @@ const CTA_EXCLUSIONS = new Set([
   "apple store"
 ]);
 
+const BASE_PAGE_WIDTH = 1240;
+const DESIRED_SIDE_GUTTER = 32;
+const PHONE_BREAKPOINT = 640;
+
+const getViewportWidth = () =>
+  typeof window === "undefined" ? BASE_PAGE_WIDTH : window.innerWidth;
+
 // сгруппированные стили
 const buttonReset = {
   display: "inline-flex",
@@ -81,7 +87,7 @@ const buttonReset = {
 
 const styles = {
   carousel: (bg) => ({
-    width: 1240,
+    width: BASE_PAGE_WIDTH,
     maxWidth: "100%",
     margin: "24px auto",
     position: "relative",
@@ -195,7 +201,7 @@ const styles = {
     width: "auto"
   },
   trendingSection: {
-    width: 1240,
+    width: BASE_PAGE_WIDTH,
     maxWidth: "100%",
     margin: "40px auto",
     padding: "60px 32px",
@@ -259,7 +265,7 @@ const styles = {
     paddingBottom: 32 /* внутренний нижний отступ вместо внешнего у последнего блока */
   },
   neverStopSection: {
-    width: 1240,
+    width: BASE_PAGE_WIDTH,
     maxWidth: "100%",
     margin: "60px auto 0",
     padding: "60px 32px",
@@ -316,7 +322,7 @@ const styles = {
     height: 40
   },
   creatorsSection: {
-    width: 1240,
+    width: BASE_PAGE_WIDTH,
     maxWidth: "100%",
     margin: "0 auto",
     padding: "50px 32px",
@@ -361,7 +367,7 @@ const styles = {
     border: "none"
   },
   joinSection: {
-    width: 1240,
+    width: BASE_PAGE_WIDTH,
     height: 375,
     margin: "0 auto", // убран нижний margin который показывал фон body
     boxSizing: "border-box",
@@ -498,6 +504,209 @@ const styles = {
   }
 };
 
+const mobileStyles = {
+  wrapper: {
+    width: "100%",
+    minHeight: "100vh",
+    padding: "20px 16px 64px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 20,
+    boxSizing: "border-box",
+    backgroundColor: "#0f0f0f"
+  },
+  heroCard: {
+    position: "relative",
+    borderRadius: 20,
+    overflow: "hidden",
+    minHeight: 420,
+    background: "#141414",
+    color: "#fff",
+    boxShadow: "0 20px 50px rgba(0,0,0,0.4)"
+  },
+  heroBackdrop: {
+    position: "absolute",
+    inset: 0,
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    filter: "blur(6px) brightness(0.8)"
+  },
+  heroOverlay: {
+    position: "absolute",
+    inset: 0,
+    background: "linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.85))"
+  },
+  heroContent: {
+    position: "relative",
+    padding: "32px 24px 48px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 12
+  },
+  heroLogo: {
+    width: 120,
+    height: "auto"
+  },
+  heroEyebrow: {
+    textTransform: "uppercase",
+    fontSize: 12,
+    letterSpacing: 1,
+    color: "rgba(255,255,255,0.8)",
+    margin: "8px 0 0 0"
+  },
+  heroTitle: {
+    fontSize: 28,
+    lineHeight: "32px",
+    margin: "4px 0 0 0"
+  },
+  heroText: {
+    fontSize: 15,
+    lineHeight: "22px",
+    margin: 0,
+    color: "rgba(255,255,255,0.9)"
+  },
+  heroActions: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    marginTop: 8
+  },
+  heroPrimary: {
+    ...buttonReset,
+    width: "100%",
+    padding: "0 24px",
+    height: 46,
+    background: "#ff5500",
+    border: "none",
+    color: "#fff",
+    fontSize: 15
+  },
+  heroSecondary: {
+    ...buttonReset,
+    width: "100%",
+    padding: "0 24px",
+    height: 46,
+    background: "transparent",
+    border: "1px solid rgba(255,255,255,0.4)",
+    color: "#fff",
+    fontSize: 15
+  },
+  heroNavRow: {
+    position: "relative",
+    padding: "0 16px 20px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  navBtn: {
+    ...buttonReset,
+    width: 42,
+    height: 42,
+    borderRadius: "50%",
+    border: "1px solid rgba(255,255,255,0.3)",
+    background: "rgba(0,0,0,0.35)",
+    color: "#fff",
+    fontSize: 20
+  },
+  dotRow: {
+    display: "flex",
+    gap: 8
+  },
+  dot: (active) => ({
+    width: 10,
+    height: 10,
+    borderRadius: "50%",
+    border: "none",
+    background: active ? "#fff" : "rgba(255,255,255,0.4)",
+    padding: 0,
+    cursor: "pointer"
+  }),
+  featureCard: {
+    background: "#161616",
+    borderRadius: 18,
+    padding: "24px",
+    color: "#fff",
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    border: "1px solid rgba(255,255,255,0.08)"
+  },
+  featureEyebrow: {
+    textTransform: "uppercase",
+    fontSize: 11,
+    letterSpacing: 1,
+    color: "rgba(255,255,255,0.65)",
+    margin: 0
+  },
+  featureTitle: {
+    fontSize: 22,
+    margin: 0
+  },
+  featureText: {
+    fontSize: 14,
+    lineHeight: "20px",
+    margin: 0,
+    color: "rgba(255,255,255,0.8)"
+  },
+  featurePrimary: {
+    ...buttonReset,
+    width: "100%",
+    padding: "0 20px",
+    height: 44,
+    background: "#fff",
+    border: "none",
+    color: "#000",
+    fontSize: 14
+  },
+  quickActions: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 16
+  },
+  storeBadges: {
+    display: "flex",
+    gap: 12,
+    flexWrap: "wrap"
+  },
+  joinCard: {
+    borderRadius: 22,
+    padding: "32px 24px",
+    background: "linear-gradient(135deg, #ff7a18, #ff4d00)",
+    color: "#fff",
+    textAlign: "center",
+    display: "flex",
+    flexDirection: "column",
+    gap: 16
+  },
+  joinTitle: {
+    fontSize: 24,
+    lineHeight: "30px",
+    margin: 0
+  },
+  joinSubtitle: {
+    fontSize: 14,
+    lineHeight: "20px",
+    margin: 0
+  },
+  joinCTA: {
+    ...buttonReset,
+    width: "100%",
+    height: 46,
+    background: "#fff",
+    color: "#000",
+    border: "none",
+    fontSize: 15
+  },
+  joinLinks: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+    fontSize: 13,
+    color: "rgba(255,255,255,0.9)"
+  }
+};
+
 // функция форматирования заголовка
 const formatTitle = (title) =>
   title.split(". ").map((chunk, idx, arr) => (
@@ -510,7 +719,13 @@ const formatTitle = (title) =>
 const LandingPage = () => {
   const slidesToRender = FEATURED_SLIDES.length > 0 ? FEATURED_SLIDES : slides;
   const totalSlides = slidesToRender.length || 1;
-  const isMobile = useBreakpoint(640);
+  const [viewportWidth, setViewportWidth] = useState(getViewportWidth);
+  const isPhone = viewportWidth <= PHONE_BREAKPOINT;
+  const availableWidth = Math.max(1, viewportWidth - DESIRED_SIDE_GUTTER * 2);
+  const shouldScaleDesktop = !isPhone && viewportWidth < BASE_PAGE_WIDTH;
+  const pageScale = shouldScaleDesktop ? Math.min(1, availableWidth / BASE_PAGE_WIDTH) : 1;
+  const scaledWidth = BASE_PAGE_WIDTH * pageScale;
+  const horizontalPadding = isPhone ? 0 : Math.max(0, (viewportWidth - scaledWidth) / 2);
 
   const [index, setIndex] = useState(0);
   const [modalType, setModalType] = useState("");
@@ -524,6 +739,15 @@ const LandingPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [profileDefaults, setProfileDefaults] = useState(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+    const handleResize = () => setViewportWidth(getViewportWidth());
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const resetAuthFields = () => {
     setEmail("");
@@ -705,217 +929,132 @@ const LandingPage = () => {
     document.body.style.margin = "0";
   }, []);
 
-  return (
-    <div style={{
-      ...styles.pageWrapper,
-      paddingTop: isMobile ? 32 : styles.pageWrapper.paddingTop,
-      paddingBottom: isMobile ? 24 : styles.pageWrapper.paddingBottom
-    }}>
-      {/* <Header /> */}
-      <div
-        className="hello-carousel"
-        style={{
-          ...styles.carousel(active?.image ?? slidesToRender[0]?.image ?? slideImg1),
-          width: "100%",
-          maxWidth: 1240,
-          margin: isMobile ? "0 auto 24px" : "24px auto",
-          padding: isMobile ? "72px 20px 96px" : "32px 32px",
-          height: isMobile ? "auto" : 450,
-          minHeight: isMobile ? 480 : 450,
-          borderRadius: isMobile ? 0 : 12
-        }}
-        role="region"
-        aria-label="Музыкальная карусель"
-      >
-        {/* логотип слева */}
-        <img src={logo} alt="SoundCloud" style={{
-          ...styles.logo,
-          height: isMobile ? 20 : 24,
-          top: isMobile ? 20 : 40,
-          left: isMobile ? 20 : styles.logo.left
-        }} />
-        {/* верхние кнопки */}
-        <div style={{
-          ...styles.topButtons,
-          position: isMobile ? "static" : styles.topButtons.position,
-          width: isMobile ? "100%" : "auto",
-          flexDirection: isMobile ? "column" : "row",
-          alignItems: isMobile ? "stretch" : "center",
-          gap: isMobile ? 8 : styles.topButtons.gap,
-          marginTop: isMobile ? 16 : 0
-        }}>
-          <button style={styles.topBtn()} onClick={() => openModal("signin")}>Sign in</button>
-          <button style={styles.topBtn("primary")} onClick={() => openModal("signup")}>Create account</button>
-          <button style={styles.topBtn("plain")}>For Artists</button>
-        </div>
-        {/* навигация слева/справа */}
-        {!isMobile && (
-          <button onClick={prev} style={styles.navSideBtn("left")} aria-label="Предыдущий слайд">‹</button>
-        )}
-        {!isMobile && (
-          <button onClick={next} style={styles.navSideBtn("right")} aria-label="Следующий слайд">›</button>
-        )}
-        {/* левый контент */}
-        <div style={{
-          ...styles.left,
-          maxWidth: "100%",
-          paddingLeft: isMobile ? 0 : styles.left.paddingLeft,
-          alignItems: isMobile ? "center" : "flex-start",
-          textAlign: isMobile ? "center" : "left"
-        }}>
-          <div style={styles.content}>
-            <h1 style={{
-              ...styles.h1,
-              fontSize: isMobile ? 36 : styles.h1.fontSize,
-              lineHeight: isMobile ? "42px" : styles.h1.lineHeight,
-              textAlign: isMobile ? "center" : "left"
-            }}>{formatTitle(active?.title ?? "")}</h1>
-            <p style={{
-              ...styles.text,
-              fontSize: isMobile ? 15 : styles.text.fontSize,
-              textAlign: isMobile ? "center" : "left"
-            }}>{active?.text ?? ""}</p>
-            <div style={{
-              display: "flex",
-              gap: 8,
-              marginTop: 32,
-              alignItems: "center",
-              justifyContent: isMobile ? "center" : "flex-start",
-              flexDirection: isMobile ? "column" : "row"
-            }}>
+  const renderMobileSections = () => {
+    const quickCards = [
+      {
+        eyebrow: "Trending",
+        title: "Hear what's trending",
+        text: "Drop into curated sets built by the SoundCloud community.",
+        cta: "Explore trending",
+        action: () => triggerSignupModal("Explore trending playlists")
+      },
+      {
+        eyebrow: "Creators",
+        title: "Calling all creators",
+        text: "Upload in minutes, share updates, and unlock Pro tools.",
+        cta: "Find out more",
+        action: () => triggerSignupModal("Find out more")
+      }
+    ];
+
+    return (
+      <div style={mobileStyles.wrapper}>
+        <section style={mobileStyles.heroCard}>
+          <img
+            src={active?.image ?? slidesToRender[0]?.image ?? slideImg1}
+            alt="Featured slide background"
+            style={mobileStyles.heroBackdrop}
+          />
+          <div style={mobileStyles.heroOverlay} />
+          <div style={mobileStyles.heroContent}>
+            <img src={logo} alt="SoundCloud" style={mobileStyles.heroLogo} />
+            <p style={mobileStyles.heroEyebrow}>{active?.artist ?? "SoundCloud Artists"}</p>
+            <h1 style={mobileStyles.heroTitle}>{active?.title ?? "Discover. Get Discovered."}</h1>
+            {active?.text && <p style={mobileStyles.heroText}>{active.text}</p>}
+            <div style={mobileStyles.heroActions}>
               {active?.cta && (
                 <button
                   type="button"
-                  style={styles.cta}
+                  style={mobileStyles.heroPrimary}
                   onClick={() => triggerSignupModal(active.cta)}
                 >
                   {active.cta}
                 </button>
               )}
-              {active?.ctaa && (
-                <button
-                  type="button"
-                  style={styles.ctaSecondary}
-                  onClick={() => triggerSignupModal(active.ctaa)}
-                >
-                  {active.ctaa}
-                </button>
-              )}
+              <button
+                type="button"
+                style={mobileStyles.heroSecondary}
+                onClick={() => openModal("signin")}
+              >
+                Sign in
+              </button>
             </div>
           </div>
-        </div>
-        {/* блок артиста */}
-        <div style={{
-          ...styles.artistWrap,
-          position: isMobile ? "static" : styles.artistWrap.position,
-          textAlign: isMobile ? "center" : styles.artistWrap.textAlign,
-          marginTop: isMobile ? 32 : 0
-        }}>
-          <div style={{ fontSize: 14 }}>{active?.artist}</div>
-          <div style={{ fontSize: 12, opacity: 0.85 }}>{active?.subtitle}</div>
-        </div>
-        {/* точки */}
-        <div style={{
-          ...styles.dots,
-          position: isMobile ? "static" : styles.dots.position,
-          marginTop: isMobile ? 24 : 0,
-          justifyContent: "center"
-        }} aria-label="Индикаторы слайдов">
-          {slidesToRender.map((slide, slideIndex) => (
+          <div style={mobileStyles.heroNavRow}>
             <button
-              key={slide.id ?? slideIndex}
-              onClick={() => goTo(slideIndex)}
-              style={styles.dot(index === slideIndex)}
-              aria-label={`Слайд ${slideIndex + 1}`}
-              aria-current={index === slideIndex}
-            />
-          ))}
-        </div>
-      </div>
+              type="button"
+              style={mobileStyles.navBtn}
+              onClick={prev}
+              aria-label="Предыдущий слайд"
+            >
+              ‹
+            </button>
+            <div style={mobileStyles.dotRow}>
+              {slidesToRender.map((slide, slideIndex) => (
+                <button
+                  type="button"
+                  key={slide.id ?? slideIndex}
+                  style={mobileStyles.dot(index === slideIndex)}
+                  onClick={() => goTo(slideIndex)}
+                  aria-label={`Слайд ${slideIndex + 1}`}
+                  aria-current={index === slideIndex}
+                />
+              ))}
+            </div>
+            <button
+              type="button"
+              style={mobileStyles.navBtn}
+              onClick={next}
+              aria-label="Следующий слайд"
+            >
+              ›
+            </button>
+          </div>
+        </section>
 
-
-      <div style={{
-        ...styles.trendingSection,
-        padding: isMobile ? "40px 20px" : styles.trendingSection.padding,
-        margin: isMobile ? "0 auto 24px" : styles.trendingSection.margin
-      }}>
-        <div style={{
-          ...styles.trendingTop,
-          flexDirection: isMobile ? "column" : "row",
-          width: "100%",
-          height: isMobile ? "auto" : styles.trendingTop.height,
-          gap: isMobile ? 16 : styles.trendingTop.gap,
-          alignItems: isMobile ? "stretch" : styles.trendingTop.alignItems
-        }}>
-          <input
-            type="text"
-            placeholder="Search for artists, bands, tracks, podcasts"
-            aria-label="Search the SoundCloud catalog"
-            style={{
-              ...styles.searchInput,
-              height: isMobile ? 48 : styles.searchInput.height,
-              cursor: "pointer"
-            }}
-            readOnly
-            onClick={handleLandingSearchIntent}
-            onKeyDown={handleLandingSearchKeyDown}
-          />
-          <span style={{
-            ...styles.orText,
-            display: isMobile ? "none" : "inline-flex"
-          }}>or</span>
+        <section style={mobileStyles.featureCard}>
+          <p style={mobileStyles.featureEyebrow}>Search</p>
+          <h3 style={mobileStyles.featureTitle}>Find your next obsession</h3>
+          <p style={mobileStyles.featureText}>Search for artists, bands, tracks, and podcasts across SoundCloud.</p>
           <button
             type="button"
-            style={{
-              ...styles.uploadBtn,
-              width: isMobile ? "100%" : "auto",
-              height: isMobile ? 48 : styles.uploadBtn.height
-            }}
-            onClick={() => triggerSignupModal("Upload your own")}
+            style={mobileStyles.featurePrimary}
+            onClick={requireSignInForSearch}
           >
-            Upload your own
+            Search the catalog
           </button>
-        </div>
-        <h2 style={{
-          ...styles.trendingTitle,
-          fontSize: isMobile ? 22 : styles.trendingTitle.fontSize,
-          lineHeight: isMobile ? "30px" : styles.trendingTitle.lineHeight
-        }}>Hear what's trending for free in the SoundCloud community</h2>
-        <button
-          type="button"
-          style={{
-            ...styles.trendingBtn,
-            width: isMobile ? "100%" : "auto"
-          }}
-          onClick={() => triggerSignupModal("Explore trending playlists")}
-        >
-          Explore trending playlists
-        </button>
-      </div>
-      
-      <div style={{
-        ...styles.neverStopSection,
-        flexDirection: isMobile ? "column" : "row",
-        alignItems: isMobile ? "flex-start" : styles.neverStopSection.alignItems,
-        justifyContent: isMobile ? "flex-start" : styles.neverStopSection.justifyContent,
-        padding: isMobile ? "48px 20px" : styles.neverStopSection.padding,
-        height: isMobile ? "auto" : styles.neverStopSection.height,
-        textAlign: isMobile ? "left" : "right",
-        gap: isMobile ? 32 : styles.neverStopSection.gap
-      }}>
-        <div style={{
-          ...styles.neverStopContent,
-          width: "100%"
+        </section>
+
+        <section style={mobileStyles.quickActions}>
+          {quickCards.map((card) => (
+            <div key={card.title} style={mobileStyles.featureCard}>
+              <p style={mobileStyles.featureEyebrow}>{card.eyebrow}</p>
+              <h3 style={mobileStyles.featureTitle}>{card.title}</h3>
+              <p style={mobileStyles.featureText}>{card.text}</p>
+              <button
+                type="button"
+                style={mobileStyles.featurePrimary}
+                onClick={card.action}
+              >
+                {card.cta}
+              </button>
+            </div>
+          ))}
+        </section>
+
+        <section style={{
+          ...mobileStyles.featureCard,
+          background: "#101010",
+          border: "1px solid rgba(255,255,255,0.06)"
         }}>
-          <h2 style={styles.neverStopTitle}>Never stop listening</h2>
-          <div style={styles.neverStopTitleUnderline}></div>
-          <p style={styles.neverStopText}>SoundCloud is available on Web, iOS, Android, Sonos, Chromecast, and Xbox One.</p>
-          <div style={styles.appStoreButtons}>
+          <p style={mobileStyles.featureEyebrow}>Apps</p>
+          <h3 style={mobileStyles.featureTitle}>Never stop listening</h3>
+          <p style={mobileStyles.featureText}>SoundCloud is available on Web, iOS, Android, Sonos, Chromecast, and Xbox.</p>
+          <div style={mobileStyles.storeBadges}>
             <a
               href="https://apps.apple.com/"
               target="_blank"
               rel="noopener noreferrer"
-              style={styles.storeBadgeLink}
             >
               <img
                 src="https://upload.wikimedia.org/wikipedia/commons/6/67/App_Store_%28iOS%29.svg"
@@ -927,7 +1066,6 @@ const LandingPage = () => {
               href="https://play.google.com/"
               target="_blank"
               rel="noopener noreferrer"
-              style={styles.storeBadgeLink}
             >
               <img
                 src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
@@ -936,77 +1074,229 @@ const LandingPage = () => {
               />
             </a>
           </div>
-        </div>
-      </div>
-      
+        </section>
 
-      <div style={{
-        ...styles.creatorsSection,
-        flexDirection: isMobile ? "column" : "row",
-        padding: isMobile ? "48px 20px" : styles.creatorsSection.padding,
-        height: isMobile ? "auto" : styles.creatorsSection.height,
-        backgroundPosition: isMobile ? "center right" : styles.creatorsSection.backgroundPosition
-      }}>
-        <div style={{
-          ...styles.creatorsContent,
-          width: "100%",
-          textAlign: isMobile ? "center" : "left"
-        }}>
-          <h2 style={styles.creatorsTitle}>Calling all creators</h2>
-          <p style={styles.creatorsText}>Get on SoundCloud to connect with fans, share your sounds, and grow your audience. What are you waiting for?</p>
+        <section style={mobileStyles.joinCard}>
+          <h3 style={mobileStyles.joinTitle}>Thanks for listening. Now join in.</h3>
+          <p style={mobileStyles.joinSubtitle}>Save tracks, follow artists, and build playlists. All for free.</p>
           <button
             type="button"
-            style={{
-              ...styles.creatorsBtn,
-              width: isMobile ? "100%" : "auto"
-            }}
-            onClick={() => triggerSignupModal("Find out more")}
+            style={mobileStyles.joinCTA}
+            onClick={() => triggerSignupModal("Create account")}
           >
-            Find out more
+            Create account
           </button>
-        </div>
+          <div style={mobileStyles.joinLinks}>
+            <span>Already have an account?</span>
+            <button style={styles.joinSignIn} onClick={() => openModal("signin")}>
+              Sign in
+            </button>
+          </div>
+        </section>
       </div>
-      <div style={{
-        ...styles.joinSection,
+    );
+  };
+
+  return (
+    <div
+      style={{
+        backgroundColor: styles.pageWrapper.backgroundColor,
+        minHeight: styles.pageWrapper.minHeight,
         width: "100%",
-        padding: isMobile ? "48px 20px" : undefined,
-        height: isMobile ? "auto" : styles.joinSection.height
-      }}>
-        <h2 style={{
-          ...styles.joinTitle,
-          fontSize: isMobile ? 28 : styles.joinTitle.fontSize,
-          lineHeight: isMobile ? "34px" : styles.joinTitle.lineHeight
-        }}>Thanks for listening. Now join in.</h2>
-        <p style={{
-          ...styles.joinSubtitle,
-          fontSize: isMobile ? 14 : styles.joinSubtitle.fontSize
-        }}>Save tracks, follow artists and build playlists. All for free.</p>
-        <button
-          type="button"
+        boxSizing: "border-box",
+        overflowX: "hidden",
+        overflowY: "auto",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "flex-start",
+        paddingLeft: isPhone ? 0 : horizontalPadding,
+        paddingRight: isPhone ? 0 : horizontalPadding
+      }}
+    >
+      {isPhone ? (
+        renderMobileSections()
+      ) : (
+        <div
           style={{
-            ...styles.joinCreateBtn,
-            width: isMobile ? "100%" : "auto"
+            width: BASE_PAGE_WIDTH,
+            transform: pageScale < 1 ? `scale(${pageScale})` : undefined,
+            transformOrigin: "top center"
           }}
-          onClick={() => triggerSignupModal("Create account")}
         >
-          Create account
-        </button>
-        <div style={{
-          ...styles.joinLinks,
-          flexDirection: isMobile ? "column" : "row",
-          textAlign: "center"
-        }}>
-          <span>Already have an account?</span>
-          <button style={styles.joinSignIn} onClick={() => openModal("signin")}>Sign in</button>
+          <div style={styles.pageWrapper}>
+            {/* <Header /> */}
+            <div
+              className="hello-carousel"
+              style={styles.carousel(active?.image ?? slidesToRender[0]?.image ?? slideImg1)}
+              role="region"
+              aria-label="Музыкальная карусель"
+            >
+              <img src={logo} alt="SoundCloud" style={styles.logo} />
+              <div style={styles.topButtons}>
+                <button style={styles.topBtn()} onClick={() => openModal("signin")}>Sign in</button>
+                <button style={styles.topBtn("primary")} onClick={() => openModal("signup")}>Create account</button>
+                <button style={styles.topBtn("plain")}>For Artists</button>
+              </div>
+              <button onClick={prev} style={styles.navSideBtn("left")} aria-label="Предыдущий слайд">‹</button>
+              <button onClick={next} style={styles.navSideBtn("right")} aria-label="Следующий слайд">›</button>
+              <div style={styles.left}>
+                <div style={styles.content}>
+                  <h1 style={styles.h1}>{formatTitle(active?.title ?? "")}</h1>
+                  <p style={styles.text}>{active?.text ?? ""}</p>
+                  <div style={{
+                    display: "flex",
+                    gap: 8,
+                    marginTop: 32,
+                    alignItems: "center",
+                    justifyContent: "flex-start"
+                  }}>
+                    {active?.cta && (
+                      <button
+                        type="button"
+                        style={styles.cta}
+                        onClick={() => triggerSignupModal(active.cta)}
+                      >
+                        {active.cta}
+                      </button>
+                    )}
+                    {active?.ctaa && (
+                      <button
+                        type="button"
+                        style={styles.ctaSecondary}
+                        onClick={() => triggerSignupModal(active.ctaa)}
+                      >
+                        {active.ctaa}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div style={styles.artistWrap}>
+                <div style={{ fontSize: 14 }}>{active?.artist}</div>
+                <div style={{ fontSize: 12, opacity: 0.85 }}>{active?.subtitle}</div>
+              </div>
+              <div style={{
+                ...styles.dots,
+                justifyContent: "center"
+              }} aria-label="Индикаторы слайдов">
+                {slidesToRender.map((slide, slideIndex) => (
+                  <button
+                    key={slide.id ?? slideIndex}
+                    onClick={() => goTo(slideIndex)}
+                    style={styles.dot(index === slideIndex)}
+                    aria-label={`Слайд ${slideIndex + 1}`}
+                    aria-current={index === slideIndex}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div style={styles.trendingSection}>
+              <div style={styles.trendingTop}>
+                <input
+                  type="text"
+                  placeholder="Search for artists, bands, tracks, podcasts"
+                  aria-label="Search the SoundCloud catalog"
+                  style={{
+                    ...styles.searchInput,
+                    cursor: "pointer"
+                  }}
+                  readOnly
+                  onClick={handleLandingSearchIntent}
+                  onKeyDown={handleLandingSearchKeyDown}
+                />
+                <span style={{
+                  ...styles.orText,
+                  display: "inline-flex"
+                }}>or</span>
+                <button
+                  type="button"
+                  style={styles.uploadBtn}
+                  onClick={() => triggerSignupModal("Upload your own")}
+                >
+                  Upload your own
+                </button>
+              </div>
+              <h2 style={styles.trendingTitle}>Hear what's trending for free in the SoundCloud community</h2>
+              <button
+                type="button"
+                style={styles.trendingBtn}
+                onClick={() => triggerSignupModal("Explore trending playlists")}
+              >
+                Explore trending playlists
+              </button>
+            </div>
+
+            <div style={styles.neverStopSection}>
+              <div style={styles.neverStopContent}>
+                <h2 style={styles.neverStopTitle}>Never stop listening</h2>
+                <div style={styles.neverStopTitleUnderline}></div>
+                <p style={styles.neverStopText}>SoundCloud is available on Web, iOS, Android, Sonos, Chromecast, and Xbox One.</p>
+                <div style={styles.appStoreButtons}>
+                  <a
+                    href="https://apps.apple.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={styles.storeBadgeLink}
+                  >
+                    <img
+                      src="https://upload.wikimedia.org/wikipedia/commons/6/67/App_Store_%28iOS%29.svg"
+                      alt="App Store"
+                      style={styles.storeBadgeImage}
+                    />
+                  </a>
+                  <a
+                    href="https://play.google.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={styles.storeBadgeLink}
+                  >
+                    <img
+                      src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
+                      alt="Google Play"
+                      style={styles.storeBadgeImage}
+                    />
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <div style={styles.creatorsSection}>
+              <div style={styles.creatorsContent}>
+                <h2 style={styles.creatorsTitle}>Calling all creators</h2>
+                <p style={styles.creatorsText}>Get on SoundCloud to connect with fans, share your sounds, and grow your audience. What are you waiting for?</p>
+                <button
+                  type="button"
+                  style={styles.creatorsBtn}
+                  onClick={() => triggerSignupModal("Find out more")}
+                >
+                  Find out more
+                </button>
+              </div>
+            </div>
+
+            <div style={styles.joinSection}>
+              <h2 style={styles.joinTitle}>Thanks for listening. Now join in.</h2>
+              <p style={styles.joinSubtitle}>Save tracks, follow artists and build playlists. All for free.</p>
+              <button
+                type="button"
+                style={styles.joinCreateBtn}
+                onClick={() => triggerSignupModal("Create account")}
+              >
+                Create account
+              </button>
+              <div style={styles.joinLinks}>
+                <span>Already have an account?</span>
+                <button style={styles.joinSignIn} onClick={() => openModal("signin")}>Sign in</button>
+              </div>
+            </div>
+            {/* <Footer /> */}
+          </div>
         </div>
-      </div>
+      )}
       {modalType && (
         <div style={styles.modalBackdrop} role="dialog" aria-modal="true">
-          <div style={{
-            ...styles.modalCard,
-            width: isMobile ? "90vw" : styles.modalCard.width,
-            padding: isMobile ? "24px" : styles.modalCard.padding
-          }}>
+          <div style={styles.modalCard}>
             <button
               onClick={closeModal}
               style={styles.modalClose}
@@ -1109,7 +1399,6 @@ const LandingPage = () => {
           }}
         />
       )}
-      {/* <Footer /> */}
     </div>
   );
 };
